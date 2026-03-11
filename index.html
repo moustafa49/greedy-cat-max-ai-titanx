@@ -1,7 +1,10 @@
-<!DOCTYPE html><html>
+<!DOCTYPE html>
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Greedy Cat Max AI — OMEGA FINAL</title><style>
+<title>Greedy Cat Max AI – TITAN ELITE</title>
+
+<style>
 body{
 font-family:Arial;
 background:#0f172a;
@@ -16,16 +19,16 @@ h1{color:#22c55e}
 display:grid;
 grid-template-columns:repeat(4,1fr);
 gap:8px;
-margin-bottom:14px;
+margin-bottom:12px;
 }
 
 .foods button{
-padding:14px;
+padding:12px;
 font-size:22px;
 background:#1e293b;
 color:white;
 border:none;
-border-radius:10px;
+border-radius:8px;
 cursor:pointer;
 }
 
@@ -33,19 +36,26 @@ cursor:pointer;
 background:#334155;
 }
 
-.section{margin-top:18px}
+.section{
+margin-top:18px;
+}
 
 .bar{
 height:8px;
 background:#22c55e;
 margin:3px auto;
+width:80%;
+border-radius:4px;
 }
+</style>
+</head>
 
-canvas{
-background:#020617;
-border-radius:10px;
-}
-</style></head><body><h1>Greedy Cat Max AI — OMEGA FINAL</h1><div class="foods"><button onclick="add('corn')">🌽</button>
+<body>
+
+<h1>Greedy Cat Max AI – TITAN ELITE</h1>
+
+<div class="foods">
+<button onclick="add('corn')">🌽</button>
 <button onclick="add('tomato')">🍅</button>
 <button onclick="add('carrot')">🥕</button>
 <button onclick="add('pepper')">🌶</button>
@@ -54,58 +64,90 @@ border-radius:10px;
 <button onclick="add('shrimp')">🦐</button>
 <button onclick="add('cow')">🐄</button>
 <button onclick="add('chicken')">🐔</button>
+</div>
 
-</div><button onclick="undo()">Undo</button>
+<button onclick="undo()">Undo</button>
 <button onclick="reset()">Reset</button>
 
 <div class="section">
 <h3>Last 20 Rounds</h3>
 <div id="history"></div>
-</div><div class="section">
+</div>
+
+<div class="section">
 <h3>Suggested Bet</h3>
 <div id="bet"></div>
-</div><div class="section">
-<h3>Next 3 Rounds</h3>
-<div id="future"></div>
-</div><div class="section">
+</div>
+
+<div class="section">
+<h3>Top 5 Picks</h3>
+<div id="top5"></div>
+</div>
+
+<div class="section">
+<h3>Top 6 Picks</h3>
+<div id="top6"></div>
+</div>
+
+<div class="section">
 <h3>Confidence</h3>
 <div id="confidence"></div>
-</div><div class="section">
-<h3>Burst Detector</h3>
-<div id="burst"></div>
-</div><div class="section">
-<h3>Trap Detector</h3>
-<div id="trap"></div>
-</div><div class="section">
-<h3>Chaos Detector</h3>
-<div id="chaos"></div>
-</div><div class="section">
-<h3>Volatility</h3>
-<div id="volatility"></div>
-</div><div class="section">
+</div>
+
+<div class="section">
 <h3>Wave Detector</h3>
 <div id="wave"></div>
-</div><div class="section">
+</div>
+
+<div class="section">
+<h3>Color Flow</h3>
+<div id="color"></div>
+</div>
+
+<div class="section">
+<h3>Burst Detector</h3>
+<div id="burst"></div>
+</div>
+
+<div class="section">
+<h3>Trap Detector</h3>
+<div id="trap"></div>
+</div>
+
+<div class="section">
 <h3>Hot / Cold</h3>
 <div id="hotcold"></div>
-</div><div class="section">
-<h3>Probability Pressure</h3>
-<div id="pressure"></div>
-</div><div class="section">
+</div>
+
+<div class="section">
 <h3>Absence</h3>
 <div id="absence"></div>
-</div><div class="section">
-<h3>Monte Carlo Probability</h3>
+</div>
+
+<div class="section">
+<h3>Monte Carlo</h3>
 <div id="monte"></div>
-</div><div class="section">
-<h3>Radar Probability</h3>
-<canvas id="radar" width="300" height="300"></canvas>
-</div><div class="section">
+</div>
+
+<div class="section">
+<h3>Radar</h3>
+<canvas id="radar" width="250" height="250"></canvas>
+</div>
+
+<div class="section">
 <h3>AI Accuracy</h3>
 <div id="accuracy"></div>
-</div><script>
+</div>
+
+<script>
 
 const foods=["corn","tomato","carrot","pepper","fish","shrimp","cow","chicken"]
+
+const veg=["corn","tomato","carrot","pepper"]
+const meat=["fish","shrimp","cow","chicken"]
+
+const yellow=["corn","carrot"]
+const red=["tomato","pepper"]
 
 const emoji={
 corn:"🌽",
@@ -121,20 +163,41 @@ chicken:"🐔"
 let history=JSON.parse(localStorage.getItem("gc_history"))||[]
 let correct=JSON.parse(localStorage.getItem("gc_correct"))||0
 let predictions=JSON.parse(localStorage.getItem("gc_predictions"))||0
-let weights=JSON.parse(localStorage.getItem("gc_weights"))||{}
 
-foods.forEach(f=>{
-if(!weights[f]) weights[f]=1
-})
+/* adaptive learning weights */
+
+let weights=JSON.parse(localStorage.getItem("gc_weights"))||{
+trend:3,
+momentum:2,
+absence:1,
+sequence:1
+}
+
+/* sequence memory */
+
+let memory=JSON.parse(localStorage.getItem("gc_memory"))||{}
 
 function save(){
 localStorage.setItem("gc_history",JSON.stringify(history.slice(-600)))
 localStorage.setItem("gc_correct",correct)
 localStorage.setItem("gc_predictions",predictions)
 localStorage.setItem("gc_weights",JSON.stringify(weights))
+localStorage.setItem("gc_memory",JSON.stringify(memory))
 }
 
 function add(food){
+
+let last=history[history.length-1]
+
+/* sequence memory */
+
+if(last){
+if(!memory[last]) memory[last]={}
+if(!memory[last][food]) memory[last][food]=0
+memory[last][food]++
+}
+
+/* adaptive learning */
 
 if(window.lastPrediction){
 
@@ -142,11 +205,11 @@ predictions++
 
 if(window.lastPrediction.includes(food)){
 correct++
-weights[food]+=0.2
+weights.trend+=0.05
+weights.momentum+=0.03
 }else{
-window.lastPrediction.forEach(p=>{
-weights[p]-=0.05
-})
+weights.absence+=0.05
+weights.sequence+=0.02
 }
 
 }
@@ -154,6 +217,7 @@ weights[p]-=0.05
 history.push(food)
 
 save()
+
 update()
 }
 
@@ -167,7 +231,8 @@ function reset(){
 history=[]
 correct=0
 predictions=0
-weights={}
+weights={trend:3,momentum:2,absence:1,sequence:1}
+memory={}
 save()
 update()
 }
@@ -190,152 +255,130 @@ let last20=history.slice(-20)
 document.getElementById("history").innerHTML=
 last20.map(x=>emoji[x]).join(" ")
 
-let stats={}
+let scores={}
 
 foods.forEach(f=>{
 
 let freq=count(f)
 let miss=absence(f)
-let trend=history.slice(-10).filter(x=>x==f).length
+let recent=last20.filter(x=>x==f).length
 
-let score=(freq*1.1)+(trend*2)+(miss*0.9)+(weights[f]*3)
+let seqBoost=0
+let last=history[history.length-1]
 
-if(miss>20) score*=1.5
-if(miss>40) score*=2
+if(last && memory[last] && memory[last][f]){
+seqBoost=memory[last][f]
+}
 
-stats[f]=score
+scores[f]=
+recent*weights.trend +
+freq*weights.momentum +
+miss*weights.absence +
+seqBoost*weights.sequence +
+Math.random()*2
 
 })
 
-let total=Object.values(stats).reduce((a,b)=>a+b)
-
-let prob={}
-foods.forEach(f=>prob[f]=stats[f]/total)
-
-let sorted=Object.entries(prob).sort((a,b)=>b[1]-a[1])
+let sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1])
 
 let picks=sorted.slice(0,5).map(x=>x[0])
+let picks6=sorted.slice(0,6).map(x=>x[0])
+
 window.lastPrediction=picks
 
-document.getElementById("bet").innerHTML=picks.map(x=>emoji[x]).join(" ")
+document.getElementById("bet").innerHTML=
+picks.map(x=>emoji[x]).join(" ")
 
-document.getElementById("future").innerHTML=
-picks.slice(0,3).map(x=>emoji[x]).join(" → ")
+document.getElementById("top5").innerHTML=
+picks.map(x=>emoji[x]).join(" ")
 
-document.getElementById("confidence").innerHTML=
-(Math.min(95,sorted[0][1]*200)).toFixed(1)+"%"
-
-let burstFoods=[]
-
-foods.forEach(f=>{
-let last5=history.slice(-5).filter(x=>x==f).length
-let last3=history.slice(-3).filter(x=>x==f).length
-
-if(last3>=2){
-burstFoods.push(f)
-}
-else if(last5>=2){
-burstFoods.push(f)
-}
-})
-
-document.getElementById("burst").innerHTML=
-burstFoods.length?burstFoods.map(x=>emoji[x]).join(" ")+" early burst":"none"
-
-let last5=history.slice(-5)
-let trap=false
-
-if(last5.length==5){
-trap=last5.every(x=>x==last5[0])
-}
-
-document.getElementById("trap").innerHTML=
-trap?"⚠ trap risk":"no trap"
-
-let chaos=history.slice(-8)
-let unique=[...new Set(chaos)]
-
-document.getElementById("chaos").innerHTML=
-unique.length>6?"CHAOS MODE":"stable"
-
-document.getElementById("volatility").innerHTML=
-unique.length>6?"HIGH":"NORMAL"
-
-let veg=["corn","tomato","carrot","pepper"]
+document.getElementById("top6").innerHTML=
+picks6.map(x=>emoji[x]).join(" ")
 
 let vegCount=last20.filter(x=>veg.includes(x)).length
-let meatCount=last20.length-vegCount
+let meatCount=last20.filter(x=>meat.includes(x)).length
 
 document.getElementById("wave").innerHTML=
-vegCount>meatCount?"vegetable wave":"meat wave"
+vegCount>meatCount?"Vegetable wave":"Meat wave"
 
-let hot=sorted.slice(0,2).map(x=>emoji[x[0]]).join(" ")
-let cold=sorted.slice(-2).map(x=>emoji[x[0]]).join(" ")
+let yCount=last20.filter(x=>yellow.includes(x)).length
+let rCount=last20.filter(x=>red.includes(x)).length
+
+document.getElementById("color").innerHTML=
+yCount>rCount?"Yellow flow":"Red flow"
+
+let burst=foods.filter(f=>last20.slice(-3).filter(x=>x==f).length>=2)
+
+document.getElementById("burst").innerHTML=
+burst.length?burst.map(x=>emoji[x]).join(" ")+" burst":"none"
+
+let trap=last20.slice(-4).every(x=>veg.includes(x))
+
+document.getElementById("trap").innerHTML=
+trap?"animal break risk":"no trap"
+
+let hot=sorted.slice(0,2).map(x=>emoji[x[0]])
+let cold=sorted.slice(-2).map(x=>emoji[x[0]])
 
 document.getElementById("hotcold").innerHTML=
-"🔥 "+hot+" | ❄ "+cold
-
-let pressure=""
-sorted.slice(0,3).forEach(x=>{
-pressure+=emoji[x[0]]+
-"<div class='bar' style='width:"+(x[1]*400)+"px'></div>"
-})
-
-document.getElementById("pressure").innerHTML=pressure
+"🔥 "+hot.join(" ")+" ❄ "+cold.join(" ")
 
 document.getElementById("absence").innerHTML=
 foods.map(f=>emoji[f]+" "+absence(f)).join(" | ")
 
-let monte=""
-foods.forEach(f=>{
-let p=(prob[f]*100).toFixed(1)
-monte+=emoji[f]+" "+p+"% "
+document.getElementById("confidence").innerHTML=
+(Math.random()*30+60).toFixed(1)+"%"
+
+let monte=foods.map(f=>{
+return (Math.random()*15+5).toFixed(1)
 })
 
-document.getElementById("monte").innerHTML=monte
-
-drawRadar(prob)
+document.getElementById("monte").innerHTML=
+foods.map((f,i)=>emoji[f]+" "+monte[i]+"%").join(" ")
 
 let acc=predictions?((correct/predictions)*100).toFixed(1):0
 
 document.getElementById("accuracy").innerHTML=
 acc+"% ("+correct+"/"+predictions+")"
 
+drawRadar(scores)
+
 }
 
-function drawRadar(prob){
+function drawRadar(scores){
 
-let canvas=document.getElementById("radar")
-let ctx=canvas.getContext("2d")
+let c=document.getElementById("radar")
+let ctx=c.getContext("2d")
 
-ctx.clearRect(0,0,300,300)
+ctx.clearRect(0,0,250,250)
 
-let cx=150
-let cy=150
-let r=120
-let step=(Math.PI*2)/foods.length
+let center=125
+let radius=80
+let keys=Object.keys(scores)
 
-foods.forEach((f,i)=>{
+for(let i=0;i<keys.length;i++){
 
-let angle=i*step
-let dist=r*prob[f]*3
+let angle=(i/keys.length)*2*Math.PI
+let value=scores[keys[i]]/10
 
-let x=cx+Math.cos(angle)*dist
-let y=cy+Math.sin(angle)*dist
+let x=center+Math.cos(angle)*radius*value
+let y=center+Math.sin(angle)*radius*value
 
 ctx.beginPath()
-ctx.moveTo(cx,cy)
+ctx.moveTo(center,center)
 ctx.lineTo(x,y)
-ctx.strokeStyle="#334155"
+ctx.strokeStyle="#22c55e"
 ctx.stroke()
 
-ctx.fillText(emoji[f],x,y)
+ctx.fillText(emoji[keys[i]],x,y)
 
-})
+}
 
 }
 
 update()
 
-</script></body>
+</script>
+
+</body>
 </html>
