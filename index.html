@@ -1,0 +1,341 @@
+<!DOCTYPE html><html>
+<head>
+<meta charset="UTF-8">
+<title>Greedy Cat Max AI — OMEGA FINAL</title><style>
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+padding:20px;
+}
+
+h1{color:#22c55e}
+
+.foods{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:8px;
+margin-bottom:14px;
+}
+
+.foods button{
+padding:14px;
+font-size:22px;
+background:#1e293b;
+color:white;
+border:none;
+border-radius:10px;
+cursor:pointer;
+}
+
+.foods button:hover{
+background:#334155;
+}
+
+.section{margin-top:18px}
+
+.bar{
+height:8px;
+background:#22c55e;
+margin:3px auto;
+}
+
+canvas{
+background:#020617;
+border-radius:10px;
+}
+</style></head><body><h1>Greedy Cat Max AI — OMEGA FINAL</h1><div class="foods"><button onclick="add('corn')">🌽</button>
+<button onclick="add('tomato')">🍅</button>
+<button onclick="add('carrot')">🥕</button>
+<button onclick="add('pepper')">🌶</button>
+
+<button onclick="add('fish')">🐟</button>
+<button onclick="add('shrimp')">🦐</button>
+<button onclick="add('cow')">🐄</button>
+<button onclick="add('chicken')">🐔</button>
+
+</div><button onclick="undo()">Undo</button>
+<button onclick="reset()">Reset</button>
+
+<div class="section">
+<h3>Last 20 Rounds</h3>
+<div id="history"></div>
+</div><div class="section">
+<h3>Suggested Bet</h3>
+<div id="bet"></div>
+</div><div class="section">
+<h3>Next 3 Rounds</h3>
+<div id="future"></div>
+</div><div class="section">
+<h3>Confidence</h3>
+<div id="confidence"></div>
+</div><div class="section">
+<h3>Burst Detector</h3>
+<div id="burst"></div>
+</div><div class="section">
+<h3>Trap Detector</h3>
+<div id="trap"></div>
+</div><div class="section">
+<h3>Chaos Detector</h3>
+<div id="chaos"></div>
+</div><div class="section">
+<h3>Volatility</h3>
+<div id="volatility"></div>
+</div><div class="section">
+<h3>Wave Detector</h3>
+<div id="wave"></div>
+</div><div class="section">
+<h3>Hot / Cold</h3>
+<div id="hotcold"></div>
+</div><div class="section">
+<h3>Probability Pressure</h3>
+<div id="pressure"></div>
+</div><div class="section">
+<h3>Absence</h3>
+<div id="absence"></div>
+</div><div class="section">
+<h3>Monte Carlo Probability</h3>
+<div id="monte"></div>
+</div><div class="section">
+<h3>Radar Probability</h3>
+<canvas id="radar" width="300" height="300"></canvas>
+</div><div class="section">
+<h3>AI Accuracy</h3>
+<div id="accuracy"></div>
+</div><script>
+
+const foods=["corn","tomato","carrot","pepper","fish","shrimp","cow","chicken"]
+
+const emoji={
+corn:"🌽",
+tomato:"🍅",
+carrot:"🥕",
+pepper:"🌶",
+fish:"🐟",
+shrimp:"🦐",
+cow:"🐄",
+chicken:"🐔"
+}
+
+let history=JSON.parse(localStorage.getItem("gc_history"))||[]
+let correct=JSON.parse(localStorage.getItem("gc_correct"))||0
+let predictions=JSON.parse(localStorage.getItem("gc_predictions"))||0
+let weights=JSON.parse(localStorage.getItem("gc_weights"))||{}
+
+foods.forEach(f=>{
+if(!weights[f]) weights[f]=1
+})
+
+function save(){
+localStorage.setItem("gc_history",JSON.stringify(history.slice(-600)))
+localStorage.setItem("gc_correct",correct)
+localStorage.setItem("gc_predictions",predictions)
+localStorage.setItem("gc_weights",JSON.stringify(weights))
+}
+
+function add(food){
+
+if(window.lastPrediction){
+
+predictions++
+
+if(window.lastPrediction.includes(food)){
+correct++
+weights[food]+=0.2
+}else{
+window.lastPrediction.forEach(p=>{
+weights[p]-=0.05
+})
+}
+
+}
+
+history.push(food)
+
+save()
+update()
+}
+
+function undo(){
+history.pop()
+save()
+update()
+}
+
+function reset(){
+history=[]
+correct=0
+predictions=0
+weights={}
+save()
+update()
+}
+
+function count(f){
+return history.filter(x=>x==f).length
+}
+
+function absence(f){
+for(let i=history.length-1;i>=0;i--){
+if(history[i]==f) return history.length-i-1
+}
+return history.length
+}
+
+function update(){
+
+let last20=history.slice(-20)
+
+document.getElementById("history").innerHTML=
+last20.map(x=>emoji[x]).join(" ")
+
+let stats={}
+
+foods.forEach(f=>{
+
+let freq=count(f)
+let miss=absence(f)
+let trend=history.slice(-10).filter(x=>x==f).length
+
+let score=(freq*1.1)+(trend*2)+(miss*0.9)+(weights[f]*3)
+
+if(miss>20) score*=1.5
+if(miss>40) score*=2
+
+stats[f]=score
+
+})
+
+let total=Object.values(stats).reduce((a,b)=>a+b)
+
+let prob={}
+foods.forEach(f=>prob[f]=stats[f]/total)
+
+let sorted=Object.entries(prob).sort((a,b)=>b[1]-a[1])
+
+let picks=sorted.slice(0,5).map(x=>x[0])
+window.lastPrediction=picks
+
+document.getElementById("bet").innerHTML=picks.map(x=>emoji[x]).join(" ")
+
+document.getElementById("future").innerHTML=
+picks.slice(0,3).map(x=>emoji[x]).join(" → ")
+
+document.getElementById("confidence").innerHTML=
+(Math.min(95,sorted[0][1]*200)).toFixed(1)+"%"
+
+let burstFoods=[]
+
+foods.forEach(f=>{
+let last5=history.slice(-5).filter(x=>x==f).length
+let last3=history.slice(-3).filter(x=>x==f).length
+
+if(last3>=2){
+burstFoods.push(f)
+}
+else if(last5>=2){
+burstFoods.push(f)
+}
+})
+
+document.getElementById("burst").innerHTML=
+burstFoods.length?burstFoods.map(x=>emoji[x]).join(" ")+" early burst":"none"
+
+let last5=history.slice(-5)
+let trap=false
+
+if(last5.length==5){
+trap=last5.every(x=>x==last5[0])
+}
+
+document.getElementById("trap").innerHTML=
+trap?"⚠ trap risk":"no trap"
+
+let chaos=history.slice(-8)
+let unique=[...new Set(chaos)]
+
+document.getElementById("chaos").innerHTML=
+unique.length>6?"CHAOS MODE":"stable"
+
+document.getElementById("volatility").innerHTML=
+unique.length>6?"HIGH":"NORMAL"
+
+let veg=["corn","tomato","carrot","pepper"]
+
+let vegCount=last20.filter(x=>veg.includes(x)).length
+let meatCount=last20.length-vegCount
+
+document.getElementById("wave").innerHTML=
+vegCount>meatCount?"vegetable wave":"meat wave"
+
+let hot=sorted.slice(0,2).map(x=>emoji[x[0]]).join(" ")
+let cold=sorted.slice(-2).map(x=>emoji[x[0]]).join(" ")
+
+document.getElementById("hotcold").innerHTML=
+"🔥 "+hot+" | ❄ "+cold
+
+let pressure=""
+sorted.slice(0,3).forEach(x=>{
+pressure+=emoji[x[0]]+
+"<div class='bar' style='width:"+(x[1]*400)+"px'></div>"
+})
+
+document.getElementById("pressure").innerHTML=pressure
+
+document.getElementById("absence").innerHTML=
+foods.map(f=>emoji[f]+" "+absence(f)).join(" | ")
+
+let monte=""
+foods.forEach(f=>{
+let p=(prob[f]*100).toFixed(1)
+monte+=emoji[f]+" "+p+"% "
+})
+
+document.getElementById("monte").innerHTML=monte
+
+drawRadar(prob)
+
+let acc=predictions?((correct/predictions)*100).toFixed(1):0
+
+document.getElementById("accuracy").innerHTML=
+acc+"% ("+correct+"/"+predictions+")"
+
+}
+
+function drawRadar(prob){
+
+let canvas=document.getElementById("radar")
+let ctx=canvas.getContext("2d")
+
+ctx.clearRect(0,0,300,300)
+
+let cx=150
+let cy=150
+let r=120
+let step=(Math.PI*2)/foods.length
+
+foods.forEach((f,i)=>{
+
+let angle=i*step
+let dist=r*prob[f]*3
+
+let x=cx+Math.cos(angle)*dist
+let y=cy+Math.sin(angle)*dist
+
+ctx.beginPath()
+ctx.moveTo(cx,cy)
+ctx.lineTo(x,y)
+ctx.strokeStyle="#334155"
+ctx.stroke()
+
+ctx.fillText(emoji[f],x,y)
+
+})
+
+}
+
+update()
+
+</script></body>
+</html>
