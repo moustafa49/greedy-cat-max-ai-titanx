@@ -24,7 +24,9 @@ canvas{background:black;border-radius:10px}
 <div class="section"><b>Repeat</b><div id="repeat"></div></div>
 <div class="section"><b>Wave / Trap</b><div id="wave"></div></div>
 <div class="section"><b>Hidden Bias</b><div id="bias"></div></div>
-<div class="section"><b>Pattern Replay</b><div id="replay"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
+<div class="section"><b>Pattern Replay</b><div id="replay"></div></div>
+<div class="section"><b>Cycle</b><div id="cycle"></div></div>
+<div class="section"><b>Probability Drift</b><div id="drift"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
 <div class="section"><b>Top5</b><div id="top5"></div></div>
 <div class="section"><b>Top6</b><div id="top6"></div></div><div class="section">
 <b>Strategy</b>
@@ -77,12 +79,14 @@ window.lastPrediction.forEach(p=>neuralWeights[p]-=0.03)
 }
 
 if(history.length>0){
+
 let prev=history[history.length-1]
 
 if(!transitionMatrix[prev])transitionMatrix[prev]={}
 if(!transitionMatrix[prev][food])transitionMatrix[prev][food]=0
 
 transitionMatrix[prev][food]++
+
 }
 
 history.push(food)
@@ -97,13 +101,17 @@ function undo(){history.pop();update()}
 function reset(){history=[];update()}
 
 function repeat(){
+
 let last=history[history.length-1]
 let c=0
+
 for(let i=history.length-1;i>=0;i--){
 if(history[i]==last)c++
 else break
 }
+
 return last?emoji[last]+" x"+c:""
+
 }
 
 function waveDetector(){
@@ -148,17 +156,39 @@ patternReplay=a===b?"Replay Pattern":"None"
 
 }
 
-function hiddenBias(){
+/* Pattern Cycle Detector */
 
-let last12=history.slice(-12)
+function patternCycleDetector(){
 
-let result=null
+if(history.length<8) return "None"
 
-foods.forEach(f=>{
-if(last12.filter(x=>x==f).length>=5)result=f
-})
+let a=history.slice(-4).join("-")
 
-return result
+for(let i=0;i<history.length-8;i++){
+
+let b=history.slice(i,i+4).join("-")
+
+if(a===b) return "Cycle Detected"
+
+}
+
+return "None"
+
+}
+
+/* Probability Drift */
+
+function probabilityDrift(scores){
+
+let arr=Object.values(scores)
+
+let max=Math.max(...arr)
+let min=Math.min(...arr)
+
+if(max-min>5) return "High Drift"
+if(max-min>2) return "Medium Drift"
+
+return "Stable"
 
 }
 
@@ -169,53 +199,6 @@ let last5=history.slice(-5)
 foods.forEach(f=>{
 momentum[f]=last5.filter(x=>x==f).length
 })
-
-}
-
-/* Pattern Network */
-
-function patternPredictionNetwork(){
-
-let scores={}
-foods.forEach(f=>scores[f]=0)
-
-if(history.length<5)return scores
-
-let last2=history.slice(-2).join("-")
-
-for(let i=0;i<history.length-3;i++){
-
-let p=history.slice(i,i+2).join("-")
-
-if(p===last2){
-
-let next=history[i+2]
-
-scores[next]+=2
-
-}
-
-}
-
-return scores
-
-}
-
-function riskControlEngine(){
-
-let scores={}
-foods.forEach(f=>scores[f]=0)
-
-let last8=history.slice(-8)
-
-foods.forEach(f=>{
-let count=last8.filter(x=>x==f).length
-
-if(count>=3)scores[f]-=2
-if(count==0)scores[f]+=2
-})
-
-return scores
 
 }
 
@@ -243,38 +226,44 @@ scores[n]+=transitionMatrix[last][n]*0.4
 
 }
 
-let patternNet=patternPredictionNetwork()
-let risk=riskControlEngine()
-
-foods.forEach(f=>{
-scores[f]+=patternNet[f]||0
-scores[f]+=risk[f]||0
-})
-
 foods.forEach(f=>scores[f]+=Math.random())
 
 return scores
 
 }
 
+/* Improved Monte Carlo */
+
 function monteCarlo(){
 
 let sim={}
 foods.forEach(f=>sim[f]=0)
 
-for(let i=0;i<10000;i++){
+for(let i=0;i<15000;i++){
 
 let scores=aiScores()
 
-let sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1])
+let total=Object.values(scores).reduce((a,b)=>a+b,0)
 
-let pick=sorted[Math.floor(Math.random()*5)][0]
+let r=Math.random()*total
+let cumulative=0
 
-sim[pick]++
+for(let f of foods){
+
+cumulative+=scores[f]
+
+if(r<=cumulative){
+sim[f]++
+break
+}
 
 }
 
-foods.forEach(f=>sim[f]=(sim[f]/10000*100).toFixed(1))
+}
+
+foods.forEach(f=>{
+sim[f]=(sim[f]/15000*100).toFixed(1)
+})
 
 return sim
 
@@ -326,12 +315,10 @@ waveDetector()+" | "+trapDetector()
 
 document.getElementById("replay").innerHTML=patternReplay
 
-let bias=hiddenBias()
-
-document.getElementById("bias").innerHTML=
-bias?emoji[bias]:"None"
-
 let s=aiScores()
+
+document.getElementById("cycle").innerHTML=patternCycleDetector()
+document.getElementById("drift").innerHTML=probabilityDrift(s)
 
 drawRadar(s)
 
