@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Greedy Cat Max AI — OMEGA GOD X</title>
+<title>Greedy Cat Max AI — OMEGA ULTIMATE</title>
 
 <style>
 
@@ -40,15 +40,12 @@ background:black;
 border-radius:10px;
 }
 
-.alert{color:#ef4444}
-.good{color:#22c55e}
-
 </style>
 </head>
 
 <body>
 
-<h1>Greedy Cat Max AI — OMEGA GOD X</h1>
+<h1>Greedy Cat Max AI — OMEGA ULTIMATE</h1>
 
 <div class="foods">
 
@@ -78,6 +75,26 @@ border-radius:10px;
 </div>
 
 <div class="section">
+<h3>Follow Pattern</h3>
+<div id="follow"></div>
+</div>
+
+<div class="section">
+<h3>Pair Pattern</h3>
+<div id="pair"></div>
+</div>
+
+<div class="section">
+<h3>Triple Pattern</h3>
+<div id="triple"></div>
+</div>
+
+<div class="section">
+<h3>Repeat Detector</h3>
+<div id="repeat"></div>
+</div>
+
+<div class="section">
 <h3>Top 5</h3>
 <div id="top5"></div>
 </div>
@@ -98,17 +115,12 @@ border-radius:10px;
 </div>
 
 <div class="section">
-<h3>Next Wave</h3>
-<div id="waveNext"></div>
-</div>
-
-<div class="section">
-<h3>Bias Detector</h3>
+<h3>Bias</h3>
 <div id="bias"></div>
 </div>
 
 <div class="section">
-<h3>Trap Detector</h3>
+<h3>Trap</h3>
 <div id="trap"></div>
 </div>
 
@@ -118,13 +130,8 @@ border-radius:10px;
 </div>
 
 <div class="section">
-<h3>Manipulation Detector</h3>
+<h3>Manipulation</h3>
 <div id="manipulation"></div>
-</div>
-
-<div class="section">
-<h3>Strategy</h3>
-<div id="strategy"></div>
 </div>
 
 <div class="section">
@@ -203,23 +210,10 @@ update()
 
 }
 
-function undo(){
-history.pop()
-save()
-update()
-}
+function undo(){history.pop();save();update()}
+function reset(){history=[];correct=0;predictions=0;save();update()}
 
-function reset(){
-history=[]
-correct=0
-predictions=0
-save()
-update()
-}
-
-function count(f){
-return history.filter(x=>x==f).length
-}
+function count(f){return history.filter(x=>x==f).length}
 
 function absence(food){
 for(let i=history.length-1;i>=0;i--){
@@ -246,44 +240,42 @@ else break
 return len
 }
 
-function nextWave(){
-let last=history.slice(-20)
-let v=last.filter(x=>veg.includes(x)).length
-let m=last.filter(x=>meat.includes(x)).length
-return v>m?"Vegetables":"Meat"
+function followPattern(){
+let map={}
+for(let i=0;i<history.length-1;i++){
+let key=history[i]+"-"+history[i+1]
+map[key]=(map[key]||0)+1
+}
+return map
 }
 
-function biasDetector(){
-let last=history.slice(-8)
-for(let f of foods){
-if(last.filter(x=>x==f).length>=3)
-return emoji[f]+" bias"
+function pairPattern(){
+let map={}
+for(let i=0;i<history.length-2;i++){
+let key=history[i]+"-"+history[i+1]+"-"+history[i+2]
+map[key]=(map[key]||0)+1
 }
-return "none"
-}
-
-function trapDetector(){
-let last=history.slice(-6)
-if(last.every(x=>veg.includes(x))) return "Possible trap"
-if(last.every(x=>meat.includes(x))) return "Possible trap"
-return "none"
+return map
 }
 
-function reversePattern(){
-let h=history.slice(-6)
-if(h.length<6) return false
-let first=h.slice(0,3).join()
-let last=h.slice(3).reverse().join()
-return first===last
+function triplePattern(){
+let map={}
+for(let i=0;i<history.length-3;i++){
+let key=history[i]+"-"+history[i+1]+"-"+history[i+2]+"-"+history[i+3]
+map[key]=(map[key]||0)+1
+}
+return map
 }
 
-function manipulation(){
-let last=history.slice(-10)
-for(let f of foods){
-if(last.filter(x=>x==f).length>=4)
-return true
+function repeatDetector(){
+if(history.length==0) return ""
+let last=history[history.length-1]
+let count=1
+for(let i=history.length-2;i>=0;i--){
+if(history[i]==last) count++
+else break
 }
-return false
+return emoji[last]+" x"+count
 }
 
 function stats(){
@@ -297,25 +289,22 @@ return s
 }
 
 function monteCarlo(){
-
 let sim={}
 foods.forEach(f=>sim[f]=0)
-
 for(let i=0;i<3000;i++){
 let r=foods[Math.floor(Math.random()*foods.length)]
 sim[r]++
 }
-
 return sim
-
 }
 
 function update(){
 
 let last20=history.slice(-20)
-
 document.getElementById("history").innerHTML=
 last20.map(x=>emoji[x]).join(" ")
+
+document.getElementById("repeat").innerHTML=repeatDetector()
 
 let s=stats()
 
@@ -325,17 +314,9 @@ let vegTop=sorted.filter(x=>veg.includes(x[0])).slice(0,3)
 let meatTop=sorted.filter(x=>meat.includes(x[0])).slice(0,2)
 
 let top5=[...vegTop,...meatTop].map(x=>x[0])
-
 let meat3=sorted.filter(x=>meat.includes(x[0])).slice(0,3)
 
-let top6=[
-vegTop[0][0],
-vegTop[1][0],
-vegTop[2][0],
-meat3[0][0],
-meat3[1][0],
-meat3[2][0]
-]
+let top6=[vegTop[0][0],vegTop[1][0],vegTop[2][0],meat3[0][0],meat3[1][0],meat3[2][0]]
 
 window.lastPrediction=top5
 
@@ -350,18 +331,6 @@ top6.map(x=>emoji[x]).join(" ")
 
 document.getElementById("wave").innerHTML=waveType()
 document.getElementById("waveLen").innerHTML=waveLength()
-document.getElementById("waveNext").innerHTML=nextWave()
-document.getElementById("bias").innerHTML=biasDetector()
-document.getElementById("trap").innerHTML=trapDetector()
-
-document.getElementById("reverse").innerHTML=
-reversePattern()?"⚠ Reverse pattern":"None"
-
-document.getElementById("manipulation").innerHTML=
-manipulation()?"⚠ Possible manipulation":"None"
-
-document.getElementById("strategy").innerHTML=
-waveType()=="Vegetables"?"SAFE":"BALANCED"
 
 document.getElementById("heatmap").innerHTML=
 history.slice(-40).map(x=>emoji[x]).join(" ")
@@ -369,7 +338,7 @@ history.slice(-40).map(x=>emoji[x]).join(" ")
 document.getElementById("absence").innerHTML=
 foods.map(f=>emoji[f]+" "+absence(f)).join(" | ")
 
-let total=Object.values(s).reduce((a,b)=>a+b,0)
+let total=Object.values(s).reduce((a,b)=>a+b,0)||1
 
 document.getElementById("prob").innerHTML=
 foods.map(f=>emoji[f]+" "+((s[f]/total)*100).toFixed(1)+"%").join(" | ")
