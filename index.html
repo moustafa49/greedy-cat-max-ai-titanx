@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Greedy Cat Max AI – TITAN NEXUS</title>
+<title>Greedy Cat Max AI – TITAN CORE</title>
 
 <style>
 
@@ -30,24 +30,16 @@ background:#1e293b;
 color:white;
 border:none;
 border-radius:8px;
+cursor:pointer;
 }
 
 .section{
 margin-top:16px;
 }
 
-.bar{
-height:8px;
-background:#22c55e;
-margin:4px auto;
-width:80%;
-border-radius:4px;
-}
-
 canvas{
 background:#020617;
 border-radius:10px;
-margin-top:10px;
 }
 
 </style>
@@ -55,7 +47,7 @@ margin-top:10px;
 
 <body>
 
-<h1>Greedy Cat Max AI – TITAN NEXUS</h1>
+<h1>Greedy Cat Max AI – TITAN CORE</h1>
 
 <div class="foods">
 
@@ -85,12 +77,12 @@ margin-top:10px;
 </div>
 
 <div class="section">
-<h3>Top 5 Picks (3 Veg + 2 Meat)</h3>
+<h3>Top 5 Picks</h3>
 <div id="top5"></div>
 </div>
 
 <div class="section">
-<h3>Top 6 Picks (3 Veg + 3 Meat)</h3>
+<h3>Top 6 Picks</h3>
 <div id="top6"></div>
 </div>
 
@@ -120,23 +112,18 @@ margin-top:10px;
 </div>
 
 <div class="section">
-<h3>Hot / Cold</h3>
-<div id="hotcold"></div>
-</div>
-
-<div class="section">
 <h3>Absence</h3>
 <div id="absence"></div>
 </div>
 
 <div class="section">
-<h3>Monte Carlo Probability</h3>
+<h3>Monte Carlo</h3>
 <div id="monte"></div>
 </div>
 
 <div class="section">
 <h3>Radar Probability</h3>
-<canvas id="radar" width="260" height="260"></canvas>
+<canvas id="radar" width="250" height="250"></canvas>
 </div>
 
 <div class="section">
@@ -174,12 +161,6 @@ let history=JSON.parse(localStorage.getItem("gc_history"))||[]
 let correct=JSON.parse(localStorage.getItem("gc_correct"))||0
 let predictions=JSON.parse(localStorage.getItem("gc_predictions"))||0
 
-let weights={
-trend:3,
-burst:4,
-absence:1.2
-}
-
 function save(){
 localStorage.setItem("gc_history",JSON.stringify(history.slice(-600)))
 localStorage.setItem("gc_correct",correct)
@@ -192,12 +173,8 @@ if(window.lastPrediction){
 
 predictions++
 
-if(window.lastPrediction.includes(food)){
+if(window.lastPrediction.includes(food))
 correct++
-weights.trend+=0.02
-}else{
-weights.absence+=0.02
-}
 
 }
 
@@ -222,15 +199,15 @@ save()
 update()
 }
 
-function count(f){
-return history.filter(x=>x==f).length
+function count(food){
+return history.filter(x=>x==food).length
 }
 
-function absence(f){
+function absence(food){
 
 for(let i=history.length-1;i>=0;i--){
 
-if(history[i]==f)
+if(history[i]==food)
 return history.length-i-1
 
 }
@@ -256,11 +233,10 @@ let recent=last20.filter(x=>x==f).length
 let burst=last20.slice(-4).filter(x=>x==f).length
 
 scores[f]=
-freq*weights.trend +
-recent*3 +
-burst*weights.burst +
-Math.min(miss,10)*weights.absence +
-Math.random()*2
+freq*1.4+
+recent*3+
+burst*5+
+Math.min(miss,10)
 
 })
 
@@ -302,7 +278,7 @@ let yCount=last20.filter(x=>yellow.includes(x)).length
 let rCount=last20.filter(x=>red.includes(x)).length
 
 document.getElementById("color").innerHTML=
-yCount>rCount?"Yellow vegetable flow":"Red vegetable flow"
+yCount>rCount?"Yellow flow":"Red flow"
 
 let burstFoods=foods.filter(f=>last20.slice(-4).filter(x=>x==f).length>=2)
 
@@ -318,26 +294,16 @@ if(last20.slice(-4).every(x=>meat.includes(x)))
 trap=true
 
 document.getElementById("trap").innerHTML=
-trap?"Possible trap / change":"no trap"
-
-let hotFood=sorted[0][0]
+trap?"Possible trap":"No trap"
 
 document.getElementById("hot").innerHTML=
-emoji[hotFood]+" hot"
-
-let hot=sorted.slice(0,2).map(x=>emoji[x[0]])
-let cold=sorted.slice(-2).map(x=>emoji[x[0]])
-
-document.getElementById("hotcold").innerHTML=
-"🔥 "+hot.join(" ")+" ❄ "+cold.join(" ")
+emoji[sorted[0][0]]+" hot"
 
 document.getElementById("absence").innerHTML=
 foods.map(f=>emoji[f]+" "+absence(f)).join(" | ")
 
-let monte=foods.map(f=>Math.random()*20)
-
 document.getElementById("monte").innerHTML=
-foods.map((f,i)=>emoji[f]+" "+monte[i].toFixed(1)+"%").join(" ")
+foods.map(f=>emoji[f]+" "+(Math.random()*20).toFixed(1)+"%").join(" ")
 
 drawRadar(scores)
 
@@ -356,9 +322,9 @@ function drawRadar(scores){
 let c=document.getElementById("radar")
 let ctx=c.getContext("2d")
 
-ctx.clearRect(0,0,260,260)
+ctx.clearRect(0,0,250,250)
 
-let center=130
+let center=125
 let radius=90
 let keys=Object.keys(scores)
 
