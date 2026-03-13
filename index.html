@@ -24,8 +24,7 @@ canvas{background:black;border-radius:10px}
 <div class="section"><b>Repeat</b><div id="repeat"></div></div>
 <div class="section"><b>Wave / Trap</b><div id="wave"></div></div>
 <div class="section"><b>Hidden Bias</b><div id="bias"></div></div>
-<div class="section"><b>Pattern Replay</b><div id="replay"></div></div>
-<div class="section"><b>Prediction</b><div id="prediction"></div></div>
+<div class="section"><b>Pattern Replay</b><div id="replay"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
 <div class="section"><b>Top5</b><div id="top5"></div></div>
 <div class="section"><b>Top6</b><div id="top6"></div></div><div class="section">
 <b>Strategy</b>
@@ -98,17 +97,13 @@ function undo(){history.pop();update()}
 function reset(){history=[];update()}
 
 function repeat(){
-
 let last=history[history.length-1]
 let c=0
-
 for(let i=history.length-1;i>=0;i--){
 if(history[i]==last)c++
 else break
 }
-
 return last?emoji[last]+" x"+c:""
-
 }
 
 function waveDetector(){
@@ -177,6 +172,53 @@ momentum[f]=last5.filter(x=>x==f).length
 
 }
 
+/* Pattern Network */
+
+function patternPredictionNetwork(){
+
+let scores={}
+foods.forEach(f=>scores[f]=0)
+
+if(history.length<5)return scores
+
+let last2=history.slice(-2).join("-")
+
+for(let i=0;i<history.length-3;i++){
+
+let p=history.slice(i,i+2).join("-")
+
+if(p===last2){
+
+let next=history[i+2]
+
+scores[next]+=2
+
+}
+
+}
+
+return scores
+
+}
+
+function riskControlEngine(){
+
+let scores={}
+foods.forEach(f=>scores[f]=0)
+
+let last8=history.slice(-8)
+
+foods.forEach(f=>{
+let count=last8.filter(x=>x==f).length
+
+if(count>=3)scores[f]-=2
+if(count==0)scores[f]+=2
+})
+
+return scores
+
+}
+
 function aiScores(){
 
 momentumEngine()
@@ -194,10 +236,20 @@ scores[f]+=momentum[f]
 let last=history[history.length-1]
 
 if(transitionMatrix[last]){
+
 Object.keys(transitionMatrix[last]).forEach(n=>{
 scores[n]+=transitionMatrix[last][n]*0.4
 })
+
 }
+
+let patternNet=patternPredictionNetwork()
+let risk=riskControlEngine()
+
+foods.forEach(f=>{
+scores[f]+=patternNet[f]||0
+scores[f]+=risk[f]||0
+})
 
 foods.forEach(f=>scores[f]+=Math.random())
 
@@ -205,19 +257,15 @@ return scores
 
 }
 
-/* IMPROVED MONTE CARLO */
-
 function monteCarlo(){
 
 let sim={}
 foods.forEach(f=>sim[f]=0)
 
-for(let i=0;i<20000;i++){
-
+for(let i=0;i<20000;i++)
 let scores=aiScores()
 
-let total=0
-foods.forEach(f=>total+=scores[f])
+let total=Object.values(scores).reduce((a,b)=>a+b,0)
 
 let r=Math.random()*total
 let cumulative=0
@@ -227,8 +275,10 @@ for(let f of foods){
 cumulative+=scores[f]
 
 if(r<=cumulative){
+
 sim[f]++
 break
+
 }
 
 }
@@ -236,10 +286,12 @@ break
 }
 
 foods.forEach(f=>{
-sim[f]=(sim[f]/20000*100).toFixed(1)
+sim[f]=(sim[f]/10000*100).toFixed(1)
 })
 
 return sim
+
+}
 
 }
 
