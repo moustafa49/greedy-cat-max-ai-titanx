@@ -1,14 +1,14 @@
 <!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
-<title>Greedy Cat MAX — QUANTUM SINGULARITY AI</title><style>
+<title>Greedy Cat MAX — OMEGA GOD AI</title><style>
 body{font-family:Arial;background:#020617;color:white;text-align:center;padding:20px}
 h1{color:#22c55e}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px}
 button{padding:12px;font-size:22px;background:#1e293b;color:white;border:none;border-radius:8px;cursor:pointer}
 .section{margin-top:16px}
 canvas{background:black;border-radius:10px}
-</style></head><body><h1>Greedy Cat MAX — QUANTUM SINGULARITY AI</h1><div class="grid">
+</style></head><body><h1>Greedy Cat MAX — OMEGA GOD AI</h1><div class="grid">
 <button onclick="add('corn')">🌽</button>
 <button onclick="add('tomato')">🍅</button>
 <button onclick="add('carrot')">🥕</button>
@@ -66,6 +66,7 @@ momentum[f]=0
 function add(food){
 
 if(window.lastPrediction){
+
 predictions++
 
 if(window.lastPrediction.includes(food)){
@@ -74,15 +75,18 @@ neuralWeights[food]+=0.2
 }else{
 window.lastPrediction.forEach(p=>neuralWeights[p]-=0.03)
 }
+
 }
 
 if(history.length>0){
+
 let prev=history[history.length-1]
 
 if(!transitionMatrix[prev])transitionMatrix[prev]={}
 if(!transitionMatrix[prev][food])transitionMatrix[prev][food]=0
 
 transitionMatrix[prev][food]++
+
 }
 
 history.push(food)
@@ -97,13 +101,17 @@ function undo(){history.pop();update()}
 function reset(){history=[];update()}
 
 function repeat(){
+
 let last=history[history.length-1]
 let c=0
+
 for(let i=history.length-1;i>=0;i--){
 if(history[i]==last)c++
 else break
 }
+
 return last?emoji[last]+" x"+c:""
+
 }
 
 function waveDetector(){
@@ -172,53 +180,6 @@ momentum[f]=last5.filter(x=>x==f).length
 
 }
 
-/* Pattern Network */
-
-function patternPredictionNetwork(){
-
-let scores={}
-foods.forEach(f=>scores[f]=0)
-
-if(history.length<5)return scores
-
-let last2=history.slice(-2).join("-")
-
-for(let i=0;i<history.length-3;i++){
-
-let p=history.slice(i,i+2).join("-")
-
-if(p===last2){
-
-let next=history[i+2]
-
-scores[next]+=2
-
-}
-
-}
-
-return scores
-
-}
-
-function riskControlEngine(){
-
-let scores={}
-foods.forEach(f=>scores[f]=0)
-
-let last8=history.slice(-8)
-
-foods.forEach(f=>{
-let count=last8.filter(x=>x==f).length
-
-if(count>=3)scores[f]-=2
-if(count==0)scores[f]+=2
-})
-
-return scores
-
-}
-
 function aiScores(){
 
 momentumEngine()
@@ -243,14 +204,6 @@ scores[n]+=transitionMatrix[last][n]*0.4
 
 }
 
-let patternNet=patternPredictionNetwork()
-let risk=riskControlEngine()
-
-foods.forEach(f=>{
-scores[f]+=patternNet[f]||0
-scores[f]+=risk[f]||0
-})
-
 foods.forEach(f=>scores[f]+=Math.random())
 
 return scores
@@ -262,22 +215,36 @@ function monteCarlo(){
 let sim={}
 foods.forEach(f=>sim[f]=0)
 
-for(let i=0;i<10000;i++){
+for(let i=0;i<20000;i++){
 
 let scores=aiScores()
 
-let sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1])
+let total=Object.values(scores).reduce((a,b)=>a+b,0)
 
-let pick=sorted[Math.floor(Math.random()*5)][0]
+let r=Math.random()*total
+let cumulative=0
 
-sim[pick]++
+for(let f of foods){
+
+cumulative+=scores[f]
+
+if(r<=cumulative){
+sim[f]++
+break
+}
 
 }
 
-foods.forEach(f=>sim[f]=(sim[f]/10000*100).toFixed(1))
+}
+
+foods.forEach(f=>{
+sim[f]=(sim[f]/20000*100).toFixed(1)
+})
 
 return sim
 
+}
+}
 }
 
 function drawRadar(scores){
