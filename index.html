@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Greedy Cat Max AI – TITAN CORE</title>
+<title>Greedy Cat Max AI — OMEGA ULTRA</title>
 
 <style>
 
@@ -33,28 +33,38 @@ border-radius:8px;
 cursor:pointer;
 }
 
-.section{
-margin-top:16px;
-}
+.section{margin-top:18px}
 
 canvas{
 background:#020617;
 border-radius:10px;
 }
 
+.strategy{
+width:80%;
+margin:auto;
+padding:10px;
+border-radius:8px;
+margin-top:10px;
+}
+
+.safe{background:#1e3a8a}
+.balance{background:#92400e}
+.aggressive{background:#7f1d1d}
+
 </style>
 </head>
 
 <body>
 
-<h1>Greedy Cat Max AI – TITAN CORE</h1>
+<h1>Greedy Cat Max AI — OMEGA ULTRA</h1>
 
 <div class="foods">
 
 <button onclick="add('corn')">🌽</button>
 <button onclick="add('tomato')">🍅</button>
 <button onclick="add('carrot')">🥕</button>
-<button onclick="add('pepper')">🌶</button>
+<button onclick="add('pepper')">🫑</button>
 
 <button onclick="add('fish')">🐟</button>
 <button onclick="add('shrimp')">🦐</button>
@@ -72,8 +82,8 @@ border-radius:10px;
 </div>
 
 <div class="section">
-<h3>Suggested Bet</h3>
-<div id="bet"></div>
+<h3>Next Round Prediction</h3>
+<div id="next"></div>
 </div>
 
 <div class="section">
@@ -87,33 +97,53 @@ border-radius:10px;
 </div>
 
 <div class="section">
-<h3>Wave Detector</h3>
+<h3>Wave</h3>
 <div id="wave"></div>
 </div>
 
 <div class="section">
-<h3>Color Flow</h3>
-<div id="color"></div>
+<h3>Color Wave</h3>
+<div id="colorwave"></div>
 </div>
 
 <div class="section">
-<h3>Burst Detector</h3>
+<h3>Burst</h3>
 <div id="burst"></div>
 </div>
 
 <div class="section">
-<h3>Trap Detector</h3>
+<h3>Trap</h3>
 <div id="trap"></div>
 </div>
 
 <div class="section">
-<h3>Hot Button</h3>
-<div id="hot"></div>
+<h3>Mirror Pattern</h3>
+<div id="mirror"></div>
+</div>
+
+<div class="section">
+<h3>Cycle Detector</h3>
+<div id="cycle"></div>
+</div>
+
+<div class="section">
+<h3>Hot / Cold</h3>
+<div id="hotcold"></div>
 </div>
 
 <div class="section">
 <h3>Absence</h3>
 <div id="absence"></div>
+</div>
+
+<div class="section">
+<h3>Heatmap</h3>
+<div id="heatmap"></div>
+</div>
+
+<div class="section">
+<h3>Live Probability</h3>
+<div id="prob"></div>
 </div>
 
 <div class="section">
@@ -123,7 +153,7 @@ border-radius:10px;
 
 <div class="section">
 <h3>Radar Probability</h3>
-<canvas id="radar" width="250" height="250"></canvas>
+<canvas id="radar" width="300" height="300"></canvas>
 </div>
 
 <div class="section">
@@ -132,7 +162,7 @@ border-radius:10px;
 </div>
 
 <div class="section">
-<h3>AI Accuracy</h3>
+<h3>Accuracy</h3>
 <div id="accuracy"></div>
 </div>
 
@@ -150,19 +180,37 @@ const emoji={
 corn:"🌽",
 tomato:"🍅",
 carrot:"🥕",
-pepper:"🌶",
+pepper:"🫑",
 fish:"🐟",
 shrimp:"🦐",
 cow:"🐄",
 chicken:"🐔"
 }
 
+const neighbors={
+corn:["shrimp","chicken"],
+shrimp:["carrot","corn"],
+carrot:["fish","shrimp"],
+fish:["pepper","carrot"],
+pepper:["cow","fish"],
+cow:["tomato","pepper"],
+tomato:["chicken","cow"],
+chicken:["corn","tomato"]
+}
+
 let history=JSON.parse(localStorage.getItem("gc_history"))||[]
 let correct=JSON.parse(localStorage.getItem("gc_correct"))||0
 let predictions=JSON.parse(localStorage.getItem("gc_predictions"))||0
 
+let weights={
+trend:1.5,
+absence:0.8,
+recent:2,
+neighbor:3
+}
+
 function save(){
-localStorage.setItem("gc_history",JSON.stringify(history.slice(-600)))
+localStorage.setItem("gc_history",JSON.stringify(history.slice(-1000)))
 localStorage.setItem("gc_correct",correct)
 localStorage.setItem("gc_predictions",predictions)
 }
@@ -170,16 +218,11 @@ localStorage.setItem("gc_predictions",predictions)
 function add(food){
 
 if(window.lastPrediction){
-
 predictions++
-
-if(window.lastPrediction.includes(food))
-correct++
-
+if(window.lastPrediction.includes(food)) correct++
 }
 
 history.push(food)
-
 save()
 update()
 
@@ -206,14 +249,44 @@ return history.filter(x=>x==food).length
 function absence(food){
 
 for(let i=history.length-1;i>=0;i--){
-
-if(history[i]==food)
-return history.length-i-1
-
+if(history[i]==food) return history.length-i-1
 }
 
 return history.length
+}
 
+function mirrorPattern(){
+let h=history.slice(-6)
+if(h.length<6) return false
+return h[0]==h[5] && h[1]==h[4]
+}
+
+function cycleDetector(){
+
+let h=history.slice(-8)
+
+if(h.length<8) return "None"
+
+if(h[0]==h[4] && h[1]==h[5] && h[2]==h[6])
+return "Cycle detected"
+
+return "None"
+
+}
+
+function monteCarlo(){
+
+let sim={}
+foods.forEach(f=>sim[f]=0)
+
+for(let i=0;i<2000;i++){
+
+let r=foods[Math.floor(Math.random()*foods.length)]
+sim[r]++
+
+}
+
+return sim
 }
 
 function update(){
@@ -223,94 +296,78 @@ let last20=history.slice(-20)
 document.getElementById("history").innerHTML=
 last20.map(x=>emoji[x]).join(" ")
 
-let scores={}
+let stats={}
 
 foods.forEach(f=>{
 
 let freq=count(f)
 let miss=absence(f)
 let recent=last20.filter(x=>x==f).length
-let burst=last20.slice(-4).filter(x=>x==f).length
 
-scores[f]=
-freq*1.4+
-recent*3+
-burst*5+
-Math.min(miss,10)
+let score=(freq*weights.trend)+(miss*weights.absence)+(recent*weights.recent)
+
+let last=history[history.length-1]
+
+if(last && neighbors[last].includes(f)) score+=weights.neighbor
+
+stats[f]=score
 
 })
 
-let sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1])
+let sorted=Object.entries(stats).sort((a,b)=>b[1]-a[1])
 
-let vegSorted=sorted.filter(x=>veg.includes(x[0]))
-let meatSorted=sorted.filter(x=>meat.includes(x[0]))
+let vegTop=sorted.filter(x=>veg.includes(x[0])).slice(0,3)
+let meatTop=sorted.filter(x=>meat.includes(x[0])).slice(0,2)
 
-let picks=[
-vegSorted[0][0],
-vegSorted[1][0],
-vegSorted[2][0],
-meatSorted[0][0],
-meatSorted[1][0]
+let top5=[...vegTop,...meatTop].map(x=>x[0])
+
+let meat3=sorted.filter(x=>meat.includes(x[0])).slice(0,3)
+
+let top6=[
+vegTop[0][0],
+vegTop[1][0],
+vegTop[2][0],
+meat3[0][0],
+meat3[1][0],
+meat3[2][0]
 ]
 
-let picks6=[
-vegSorted[0][0],
-vegSorted[1][0],
-vegSorted[2][0],
-meatSorted[0][0],
-meatSorted[1][0],
-meatSorted[2][0]
-]
+window.lastPrediction=top5
 
-window.lastPrediction=picks
+document.getElementById("top5").innerHTML=
+top5.map(x=>emoji[x]).join(" ")
 
-document.getElementById("bet").innerHTML=picks.map(x=>emoji[x]).join(" ")
-document.getElementById("top5").innerHTML=picks.map(x=>emoji[x]).join(" ")
-document.getElementById("top6").innerHTML=picks6.map(x=>emoji[x]).join(" ")
+document.getElementById("top6").innerHTML=
+top6.map(x=>emoji[x]).join(" ")
 
-let vegCount=last20.filter(x=>veg.includes(x)).length
-let meatCount=last20.filter(x=>meat.includes(x)).length
+document.getElementById("next").innerHTML=
+top5.map(x=>emoji[x]).join(" ")
 
-document.getElementById("wave").innerHTML=
-vegCount>meatCount?"Vegetable wave":"Meat wave"
+document.getElementById("mirror").innerHTML=
+mirrorPattern()?"Mirror pattern detected":"None"
 
-let yCount=last20.filter(x=>yellow.includes(x)).length
-let rCount=last20.filter(x=>red.includes(x)).length
+document.getElementById("cycle").innerHTML=
+cycleDetector()
 
-document.getElementById("color").innerHTML=
-yCount>rCount?"Yellow flow":"Red flow"
+document.getElementById("heatmap").innerHTML=
+history.slice(-40).map(x=>emoji[x]).join(" ")
 
-let burstFoods=foods.filter(f=>last20.slice(-4).filter(x=>x==f).length>=2)
+let total=Object.values(stats).reduce((a,b)=>a+b,0)
 
-document.getElementById("burst").innerHTML=
-burstFoods.length?burstFoods.map(x=>emoji[x]).join(" ")+" burst":"none"
+document.getElementById("prob").innerHTML=
+foods.map(f=>emoji[f]+" "+((stats[f]/total)*100).toFixed(1)+"%").join(" | ")
 
-let trap=false
-
-if(last20.slice(-4).every(x=>veg.includes(x)))
-trap=true
-
-if(last20.slice(-4).every(x=>meat.includes(x)))
-trap=true
-
-document.getElementById("trap").innerHTML=
-trap?"Possible trap":"No trap"
-
-document.getElementById("hot").innerHTML=
-emoji[sorted[0][0]]+" hot"
-
-document.getElementById("absence").innerHTML=
-foods.map(f=>emoji[f]+" "+absence(f)).join(" | ")
+let monte=monteCarlo()
 
 document.getElementById("monte").innerHTML=
-foods.map(f=>emoji[f]+" "+(Math.random()*20).toFixed(1)+"%").join(" ")
+foods.map(f=>emoji[f]+" "+monte[f]).join(" ")
 
-drawRadar(scores)
+drawRadar(stats)
 
 document.getElementById("confidence").innerHTML=
 (Math.random()*30+60).toFixed(1)+"%"
 
-let acc=predictions?((correct/predictions)*100).toFixed(1):0
+let acc = predictions ? ((correct/predictions)*100).toFixed(1) : 0
 
 document.getElementById("accuracy").innerHTML=
 acc+"% ("+correct+"/"+predictions+")"
@@ -319,19 +376,19 @@ acc+"% ("+correct+"/"+predictions+")"
 
 function drawRadar(scores){
 
-let c=document.getElementById("radar")
-let ctx=c.getContext("2d")
+let canvas=document.getElementById("radar")
+let ctx=canvas.getContext("2d")
 
-ctx.clearRect(0,0,250,250)
+ctx.clearRect(0,0,300,300)
 
-let center=125
-let radius=90
+let center=150
+let radius=100
 let keys=Object.keys(scores)
 
-for(let i=0;i<keys.length;i++){
+keys.forEach((k,i)=>{
 
 let angle=(i/keys.length)*2*Math.PI
-let value=scores[keys[i]]/20
+let value=scores[k]/20
 
 let x=center+Math.cos(angle)*radius*value
 let y=center+Math.sin(angle)*radius*value
@@ -342,9 +399,9 @@ ctx.lineTo(x,y)
 ctx.strokeStyle="#22c55e"
 ctx.stroke()
 
-ctx.fillText(emoji[keys[i]],x,y)
+ctx.fillText(emoji[k],x,y)
 
-}
+})
 
 }
 
