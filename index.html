@@ -25,8 +25,7 @@ canvas{background:black;border-radius:10px}
 <div class="section"><b>Wave / Trap</b><div id="wave"></div></div>
 <div class="section"><b>Hidden Bias</b><div id="bias"></div></div>
 <div class="section"><b>Pattern Replay</b><div id="replay"></div></div>
-<div class="section"><b>Cycle</b><div id="cycle"></div></div>
-<div class="section"><b>Probability Drift</b><div id="drift"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
+<div class="section"><b>Prediction</b><div id="prediction"></div></div>
 <div class="section"><b>Top5</b><div id="top5"></div></div>
 <div class="section"><b>Top6</b><div id="top6"></div></div><div class="section">
 <b>Strategy</b>
@@ -79,14 +78,12 @@ window.lastPrediction.forEach(p=>neuralWeights[p]-=0.03)
 }
 
 if(history.length>0){
-
 let prev=history[history.length-1]
 
 if(!transitionMatrix[prev])transitionMatrix[prev]={}
 if(!transitionMatrix[prev][food])transitionMatrix[prev][food]=0
 
 transitionMatrix[prev][food]++
-
 }
 
 history.push(food)
@@ -156,39 +153,17 @@ patternReplay=a===b?"Replay Pattern":"None"
 
 }
 
-/* Pattern Cycle Detector */
+function hiddenBias(){
 
-function patternCycleDetector(){
+let last12=history.slice(-12)
 
-if(history.length<8) return "None"
+let result=null
 
-let a=history.slice(-4).join("-")
+foods.forEach(f=>{
+if(last12.filter(x=>x==f).length>=5)result=f
+})
 
-for(let i=0;i<history.length-8;i++){
-
-let b=history.slice(i,i+4).join("-")
-
-if(a===b) return "Cycle Detected"
-
-}
-
-return "None"
-
-}
-
-/* Probability Drift */
-
-function probabilityDrift(scores){
-
-let arr=Object.values(scores)
-
-let max=Math.max(...arr)
-let min=Math.min(...arr)
-
-if(max-min>5) return "High Drift"
-if(max-min>2) return "Medium Drift"
-
-return "Stable"
+return result
 
 }
 
@@ -219,11 +194,9 @@ scores[f]+=momentum[f]
 let last=history[history.length-1]
 
 if(transitionMatrix[last]){
-
 Object.keys(transitionMatrix[last]).forEach(n=>{
 scores[n]+=transitionMatrix[last][n]*0.4
 })
-
 }
 
 foods.forEach(f=>scores[f]+=Math.random())
@@ -232,18 +205,19 @@ return scores
 
 }
 
-/* Improved Monte Carlo */
+/* IMPROVED MONTE CARLO */
 
 function monteCarlo(){
 
 let sim={}
 foods.forEach(f=>sim[f]=0)
 
-for(let i=0;i<15000;i++){
+for(let i=0;i<20000;i++){
 
 let scores=aiScores()
 
-let total=Object.values(scores).reduce((a,b)=>a+b,0)
+let total=0
+foods.forEach(f=>total+=scores[f])
 
 let r=Math.random()*total
 let cumulative=0
@@ -262,7 +236,7 @@ break
 }
 
 foods.forEach(f=>{
-sim[f]=(sim[f]/15000*100).toFixed(1)
+sim[f]=(sim[f]/20000*100).toFixed(1)
 })
 
 return sim
@@ -315,10 +289,12 @@ waveDetector()+" | "+trapDetector()
 
 document.getElementById("replay").innerHTML=patternReplay
 
-let s=aiScores()
+let bias=hiddenBias()
 
-document.getElementById("cycle").innerHTML=patternCycleDetector()
-document.getElementById("drift").innerHTML=probabilityDrift(s)
+document.getElementById("bias").innerHTML=
+bias?emoji[bias]:"None"
+
+let s=aiScores()
 
 drawRadar(s)
 
