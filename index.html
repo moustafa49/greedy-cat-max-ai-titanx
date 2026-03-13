@@ -1,8 +1,7 @@
 <!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
-<title>Greedy Cat Max AI — OMEGA GOD AI</title><style>
-
+<title>Greedy Cat MAX — TITAN GOD AI v3</title><style>
 body{
 font-family:Arial;
 background:#020617;
@@ -30,14 +29,15 @@ border-radius:8px;
 cursor:pointer;
 }
 
+.hot{background:#ef4444!important}
+
 .section{margin-top:18px}
 
 canvas{
 background:black;
 border-radius:10px;
 }
-
-</style></head><body><h1>Greedy Cat Max AI — OMEGA GOD AI</h1><div class="foods"><button onclick="add('corn')">🌽</button>
+</style></head><body><h1>Greedy Cat MAX — TITAN GOD AI v3</h1><div class="foods"><button onclick="add('corn')">🌽</button>
 <button onclick="add('tomato')">🍅</button>
 <button onclick="add('carrot')">🥕</button>
 <button onclick="add('pepper')">🫑</button>
@@ -47,90 +47,76 @@ border-radius:10px;
 <button onclick="add('cow')">🐄</button>
 <button onclick="add('chicken')">🐔</button>
 
+</div><div class="foods"><button onclick="toggleHot('corn')" id="hot_corn">HOT 🌽</button>
+<button onclick="toggleHot('tomato')" id="hot_tomato">HOT 🍅</button>
+<button onclick="toggleHot('carrot')" id="hot_carrot">HOT 🥕</button>
+<button onclick="toggleHot('pepper')" id="hot_pepper">HOT 🫑</button>
+
+<button onclick="toggleHot('fish')" id="hot_fish">HOT 🐟</button>
+<button onclick="toggleHot('shrimp')" id="hot_shrimp">HOT 🦐</button>
+<button onclick="toggleHot('cow')" id="hot_cow">HOT 🐄</button>
+<button onclick="toggleHot('chicken')" id="hot_chicken">HOT 🐔</button>
+
 </div><button onclick="undo()">Undo</button>
 <button onclick="reset()">Reset</button>
 
-<div class="section">
-<h3>Last 20</h3>
-<div id="history"></div>
-</div><div class="section">
-<h3>AI Prediction</h3>
-<div id="prediction"></div>
-</div><div class="section">
-<h3>Repeat Detector</h3>
-<div id="repeat"></div>
-</div><div class="section">
-<h3>Follow Pattern</h3>
-<div id="follow"></div>
-</div><div class="section">
-<h3>Pair Pattern</h3>
-<div id="pair"></div>
-</div><div class="section">
-<h3>Triple Pattern</h3>
-<div id="triple"></div>
-</div><div class="section">
-<h3>Top 5</h3>
-<div id="top5"></div>
-</div><div class="section">
-<h3>Top 6</h3>
-<div id="top6"></div>
-</div><div class="section">
-<h3>Wave</h3>
-<div id="wave"></div>
-</div><div class="section">
-<h3>Wave Length</h3>
-<div id="waveLen"></div>
-</div><div class="section">
-<h3>Heatmap</h3>
-<div id="heatmap"></div>
-</div><div class="section">
-<h3>Absence</h3>
-<div id="absence"></div>
-</div><div class="section">
-<h3>Probability</h3>
-<div id="prob"></div>
-</div><div class="section">
-<h3>Monte Carlo</h3>
-<div id="monte"></div>
-</div><div class="section">
+<div class="section"><h3>Last 20</h3><div id="history"></div></div>
+<div class="section"><h3>Prediction</h3><div id="prediction"></div></div><div class="section"><h3>Repeat</h3><div id="repeat"></div></div>
+<div class="section"><h3>Follow</h3><div id="follow"></div></div>
+<div class="section"><h3>Pair</h3><div id="pair"></div></div>
+<div class="section"><h3>Triple</h3><div id="triple"></div></div><div class="section"><h3>Top5</h3><div id="top5"></div></div>
+<div class="section"><h3>Top6</h3><div id="top6"></div></div><div class="section"><h3>Wave</h3><div id="wave"></div></div>
+<div class="section"><h3>Color Wave</h3><div id="colorWave"></div></div>
+<div class="section"><h3>Trap</h3><div id="trap"></div></div>
+<div class="section"><h3>Mirror</h3><div id="mirror"></div></div><div class="section"><h3>Heatmap</h3><div id="heatmap"></div></div>
+<div class="section"><h3>Absence</h3><div id="absence"></div></div><div class="section"><h3>Monte Carlo %</h3><div id="monte"></div></div><div class="section">
 <h3>Radar</h3>
 <canvas id="radar" width="300" height="300"></canvas>
-</div><div class="section">
-<h3>Confidence</h3>
-<div id="confidence"></div>
-</div><div class="section">
-<h3>Accuracy</h3>
-<div id="accuracy"></div>
-</div><script>
+</div><div class="section"><h3>Confidence</h3><div id="confidence"></div></div>
+<div class="section"><h3>Accuracy</h3><div id="accuracy"></div></div><script>
 
 const foods=["corn","tomato","carrot","pepper","fish","shrimp","cow","chicken"]
 
 const veg=["corn","tomato","carrot","pepper"]
 const meat=["fish","shrimp","cow","chicken"]
 
+const yellow=["corn","carrot"]
+const red=["tomato","pepper"]
+
 const emoji={
-corn:"🌽",
-tomato:"🍅",
-carrot:"🥕",
-pepper:"🫑",
-fish:"🐟",
-shrimp:"🦐",
-cow:"🐄",
-chicken:"🐔"
+corn:"🌽",tomato:"🍅",carrot:"🥕",pepper:"🫑",
+fish:"🐟",shrimp:"🦐",cow:"🐄",chicken:"🐔"
 }
 
 let history=[]
+let hotFoods={}
+let weights={}
+foods.forEach(f=>weights[f]=1)
+
 let correct=0
 let predictions=0
+
+function toggleHot(food){
+hotFoods[food]=!hotFoods[food]
+document.getElementById("hot_"+food).classList.toggle("hot")
+}
 
 function add(food){
 
 if(window.lastPrediction){
 predictions++
-if(window.lastPrediction.includes(food)) correct++
+if(window.lastPrediction.includes(food)){
+correct++
+weights[food]+=0.2
+}else{
+weights[food]-=0.05
+}
 }
 
 history.push(food)
+
+if(history.length>1000) history.shift()
+
 update()
 
 }
@@ -156,10 +142,8 @@ let last=history[history.length-1]
 let count=1
 
 for(let i=history.length-2;i>=0;i--){
-
 if(history[i]==last) count++
 else break
-
 }
 
 return emoji[last]+" x"+count
@@ -173,6 +157,7 @@ let map={}
 for(let i=0;i<history.length-1;i++){
 
 let key=history[i]+"-"+history[i+1]
+
 map[key]=(map[key]||0)+1
 
 }
@@ -188,6 +173,7 @@ let map={}
 for(let i=0;i<history.length-2;i++){
 
 let key=history[i]+"-"+history[i+1]+"-"+history[i+2]
+
 map[key]=(map[key]||0)+1
 
 }
@@ -203,6 +189,7 @@ let map={}
 for(let i=0;i<history.length-3;i++){
 
 let key=history[i]+"-"+history[i+1]+"-"+history[i+2]+"-"+history[i+3]
+
 map[key]=(map[key]||0)+1
 
 }
@@ -211,37 +198,111 @@ return map
 
 }
 
-function stats(){
+function momentum(food){
 
-let s={}
+let last=history.slice(-5)
 
-foods.forEach(f=>{
+let count=last.filter(x=>x==food).length
 
-let freq=history.filter(x=>x==f).length
-let miss=absence(f)
-
-s[f]=freq+miss
-
-})
-
-return s
+return count*0.5
 
 }
 
 function monteCarlo(){
 
 let sim={}
-
 foods.forEach(f=>sim[f]=0)
 
-for(let i=0;i<3000;i++){
+history.forEach(f=>sim[f]++)
 
-let r=foods[Math.floor(Math.random()*foods.length)]
-sim[r]++
+let total=history.length||1
+
+foods.forEach(f=>{
+sim[f]=((sim[f]/total)*100).toFixed(1)
+})
+
+return sim
 
 }
 
-return sim
+function aiPrediction(){
+
+let scores={}
+
+foods.forEach(f=>scores[f]=0)
+
+history.forEach(f=>scores[f]+=weights[f])
+
+foods.forEach(f=>scores[f]+=absence(f)*0.4)
+
+foods.forEach(f=>{
+if(hotFoods[f]) scores[f]+=5
+})
+
+foods.forEach(f=>{
+scores[f]+=momentum(f)
+})
+
+let follow=followPattern()
+let last=history[history.length-1]
+
+for(let key in follow){
+
+let parts=key.split("-")
+
+if(parts[0]==last){
+
+scores[parts[1]]+=follow[key]*2
+
+}
+
+}
+
+return scores
+
+}
+
+function waveType(){
+
+let last=history.slice(-10)
+
+let v=last.filter(x=>veg.includes(x)).length
+let m=last.filter(x=>meat.includes(x)).length
+
+return v>m?"Vegetables":"Meat"
+
+}
+
+function colorWave(){
+
+let last=history.slice(-10)
+
+let y=last.filter(x=>yellow.includes(x)).length
+let r=last.filter(x=>red.includes(x)).length
+
+return y>r?"Yellow":"Red"
+
+}
+
+function trapCheck(){
+
+let last=history.slice(-5)
+
+let v=last.filter(x=>veg.includes(x)).length
+let m=last.filter(x=>meat.includes(x)).length
+
+return v>=4||m>=4
+
+}
+
+function mirrorCheck(){
+
+let last=history.slice(-6)
+
+let a=last.slice(0,3).join()
+let b=last.slice(3).reverse().join()
+
+return a==b
 
 }
 
@@ -254,17 +315,16 @@ last20.map(x=>emoji[x]).join(" ")
 
 document.getElementById("repeat").innerHTML=repeatDetector()
 
-let s=stats()
+let s=aiPrediction()
 
 let sorted=Object.entries(s).sort((a,b)=>b[1]-a[1])
 
-let vegTop=sorted.filter(x=>veg.includes(x[0])).slice(0,3)
-let meatTop=sorted.filter(x=>meat.includes(x[0])).slice(0,2)
+let vegTop=sorted.filter(x=>veg.includes(x[0])).slice(0,3).map(x=>x[0])
+let meatTop=sorted.filter(x=>meat.includes(x[0])).slice(0,2).map(x=>x[0])
 
-let top5=[...vegTop,...meatTop].map(x=>x[0])
+let top5=[...vegTop,...meatTop]
 
-// Last Result Priority
-if(history.length>0){
+if(history.length){
 
 let last=history[history.length-1]
 
@@ -277,16 +337,9 @@ top5.unshift(last)
 
 }
 
-let meat3=sorted.filter(x=>meat.includes(x[0])).slice(0,3)
+let meat3=sorted.filter(x=>meat.includes(x[0])).slice(0,3).map(x=>x[0])
 
-let top6=[
-vegTop[0][0],
-vegTop[1][0],
-vegTop[2][0],
-meat3[0][0],
-meat3[1][0],
-meat3[2][0]
-]
+let top6=[vegTop[0],vegTop[1],vegTop[2],meat3[0],meat3[1],meat3[2]]
 
 window.lastPrediction=top5
 
@@ -299,12 +352,14 @@ top5.map(x=>emoji[x]).join(" ")
 document.getElementById("top6").innerHTML=
 top6.map(x=>emoji[x]).join(" ")
 
-document.getElementById("wave").innerHTML=
-history.slice(-10).filter(x=>veg.includes(x)).length>
-history.slice(-10).filter(x=>meat.includes(x)).length
-?"Vegetables":"Meat"
+document.getElementById("wave").innerHTML=waveType()
+document.getElementById("colorWave").innerHTML=colorWave()
 
-document.getElementById("waveLen").innerHTML=history.length
+document.getElementById("trap").innerHTML=
+trapCheck()?"Trap Possible":"Normal"
+
+document.getElementById("mirror").innerHTML=
+mirrorCheck()?"Mirror Pattern":"Normal"
 
 document.getElementById("heatmap").innerHTML=
 history.slice(-40).map(x=>emoji[x]).join(" ")
@@ -312,15 +367,10 @@ history.slice(-40).map(x=>emoji[x]).join(" ")
 document.getElementById("absence").innerHTML=
 foods.map(f=>emoji[f]+" "+absence(f)).join(" | ")
 
-let total=Object.values(s).reduce((a,b)=>a+b,0)||1
-
-document.getElementById("prob").innerHTML=
-foods.map(f=>emoji[f]+" "+((s[f]/total)*100).toFixed(1)+"%").join(" | ")
-
 let monte=monteCarlo()
 
 document.getElementById("monte").innerHTML=
-foods.map(f=>emoji[f]+" "+monte[f]).join(" ")
+foods.map(f=>emoji[f]+" "+monte[f]+"%").join(" | ")
 
 drawRadar(s)
 
