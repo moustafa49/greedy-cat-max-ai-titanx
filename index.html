@@ -215,36 +215,22 @@ function monteCarlo(){
 let sim={}
 foods.forEach(f=>sim[f]=0)
 
-for(let i=0;i<20000;i++){
+for(let i=0;i<10000;i++){
 
 let scores=aiScores()
 
-let total=Object.values(scores).reduce((a,b)=>a+b,0)
+let sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1])
 
-let r=Math.random()*total
-let cumulative=0
+let pick=sorted[Math.floor(Math.random()*5)][0]
 
-for(let f of foods){
-
-cumulative+=scores[f]
-
-if(r<=cumulative){
-sim[f]++
-break
-}
+sim[pick]++
 
 }
 
-}
-
-foods.forEach(f=>{
-sim[f]=(sim[f]/20000*100).toFixed(1)
-})
+foods.forEach(f=>sim[f]=(sim[f]/10000*100).toFixed(1))
 
 return sim
 
-}
-}
 }
 
 function drawRadar(scores){
