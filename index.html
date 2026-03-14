@@ -1,7 +1,7 @@
 <!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
-<title>Greedy Cat MAX — OMEGA AI ULTRA</title><style>
+<title>Greedy Cat MAX — OMEGA GOD AI</title><style>
 body{font-family:Arial;background:#020617;color:white;text-align:center;padding:20px}
 h1{color:#22c55e}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px}
@@ -10,23 +10,36 @@ button{padding:12px;font-size:22px;background:#1e293b;color:white;border:none;bo
 .section{margin-top:16px}
 canvas{background:black;border-radius:10px}
 </style></head>
-<body><h1>Greedy Cat MAX — OMEGA AI ULTRA</h1><div class="grid">
-<button onclick="add('corn')">🌽</button>
+<body><h1>Greedy Cat MAX — OMEGA GOD AI</h1><div class="grid"><button onclick="add('corn')">🌽</button>
 <button onclick="add('tomato')">🍅</button>
 <button onclick="add('carrot')">🥕</button>
 <button onclick="add('pepper')">🫑</button>
+
 <button onclick="add('fish')">🐟</button>
 <button onclick="add('shrimp')">🦐</button>
 <button onclick="add('cow')">🐄</button>
 <button onclick="add('chicken')">🐔</button>
+
+</div><div class="grid"><button class="hot" onclick="hot('corn')">HOT 🌽</button>
+<button class="hot" onclick="hot('tomato')">HOT 🍅</button>
+<button class="hot" onclick="hot('carrot')">HOT 🥕</button>
+<button class="hot" onclick="hot('pepper')">HOT 🫑</button>
+
+<button class="hot" onclick="hot('fish')">HOT 🐟</button>
+<button class="hot" onclick="hot('shrimp')">HOT 🦐</button>
+<button class="hot" onclick="hot('cow')">HOT 🐄</button>
+<button class="hot" onclick="hot('chicken')">HOT 🐔</button>
+
 </div><button onclick="undo()">Undo</button>
 <button onclick="reset()">Reset</button>
 
 <div class="section"><b>Last 20</b><div id="history"></div></div>
-<div class="section"><b>Repeat</b><div id="repeat"></div></div>
-<div class="section"><b>Wave / Trap</b><div id="wave"></div></div>
-<div class="section"><b>Bias</b><div id="bias"></div></div>
-<div class="section"><b>Replay</b><div id="replay"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
+<div class="section"><b>Heatmap</b><div id="heatmap"></div></div>
+<div class="section"><b>Absence</b><div id="absence"></div></div><div class="section"><b>Repeat</b><div id="repeat"></div></div>
+<div class="section"><b>Follow</b><div id="follow"></div></div>
+<div class="section"><b>Pair</b><div id="pair"></div></div>
+<div class="section"><b>Triple</b><div id="triple"></div></div><div class="section"><b>Wave / Trap</b><div id="wave"></div></div>
+<div class="section"><b>Bias</b><div id="bias"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
 <div class="section"><b>Top5</b><div id="top5"></div></div>
 <div class="section"><b>Top6</b><div id="top6"></div></div><div class="section"><b>Strategy</b>
 <div id="safe"></div>
@@ -50,9 +63,8 @@ fish:"🐟",shrimp:"🦐",cow:"🐄",chicken:"🐔"
 }
 
 let history=[]
-let learningMemory={}
-let transitionMatrix={}
-let patternReplay="None"
+let hotItem=null
+let memory={}
 
 let weights={}
 foods.forEach(f=>weights[f]=1)
@@ -64,84 +76,69 @@ function add(food){
 
 if(window.lastPrediction){
 predictions++
-
 if(window.lastPrediction.includes(food)){
 correct++
-weights[food]+=0.3
+weights[food]+=0.2
 }else{
-window.lastPrediction.forEach(p=>weights[p]-=0.05)
+window.lastPrediction.forEach(p=>weights[p]-=0.03)
 }
-}
-
-if(history.length>0){
-let prev=history[history.length-1]
-
-if(!transitionMatrix[prev]) transitionMatrix[prev]={}
-if(!transitionMatrix[prev][food]) transitionMatrix[prev][food]=0
-
-transitionMatrix[prev][food]++
 }
 
 history.push(food)
 
-if(!learningMemory[food])learningMemory[food]=0
-learningMemory[food]++
+if(history.length>1000)history.shift()
 
+patternMemory()
 update()
 }
 
 function undo(){history.pop();update()}
-function reset(){history=[];learningMemory={};transitionMatrix={};update()}
+function reset(){history=[];memory={};update()}
+function hot(f){hotItem=f}
+
+function absence(food){
+for(let i=history.length-1;i>=0;i--){
+if(history[i]==food)return history.length-i-1
+}
+return history.length
+}
 
 function repeat(){
+if(!history.length)return ""
 let last=history[history.length-1]
-let c=0
-
-for(let i=history.length-1;i>=0;i--){
+let c=1
+for(let i=history.length-2;i>=0;i--){
 if(history[i]==last)c++
 else break
 }
+return emoji[last]+" x"+c
+}
 
-return last?emoji[last]+" x"+c:""
+function patternMemory(){
+for(let i=0;i<history.length-2;i++){
+let key=history[i]+"-"+history[i+1]
+let next=history[i+2]
+if(!memory[key])memory[key]={}
+memory[key][next]=(memory[key][next]||0)+1
+}
 }
 
 function waveDetector(){
-
 let last=history.slice(-10)
-
 let v=last.filter(x=>veg.includes(x)).length
 let m=last.filter(x=>meat.includes(x)).length
-
 if(v>m)return "Vegetable Wave"
 if(m>v)return "Meat Wave"
-
 return "Mixed"
 }
 
 function trapDetector(){
-
 let last=history.slice(-6)
-
 let v=last.filter(x=>veg.includes(x)).length
 let m=last.filter(x=>meat.includes(x)).length
-
 if(v>=5)return "Vegetable Trap"
 if(m>=5)return "Meat Trap"
-
 return "Normal"
-}
-
-function patternReplayDetector(){
-
-if(history.length<12){
-patternReplay="None"
-return
-}
-
-let a=history.slice(-6).join("-")
-let b=history.slice(-12,-6).join("-")
-
-patternReplay = a===b?"Replay Pattern":"None"
 }
 
 function aiScores(){
@@ -150,39 +147,22 @@ let scores={}
 foods.forEach(f=>scores[f]=0)
 
 history.forEach(f=>scores[f]+=weights[f])
+foods.forEach(f=>scores[f]+=absence(f)*0.5)
 
-foods.forEach(f=>{
-if(learningMemory[f])scores[f]+=learningMemory[f]*0.05
-})
-
+if(history.length){
 let last=history[history.length-1]
-
-if(last){
 scores[last]+=3
-
-let streak=0
-for(let i=history.length-1;i>=0;i--){
-if(history[i]==last)streak++
-else break
 }
 
-if(streak>=2)scores[last]+=2
-if(streak>=3)scores[last]+=4
-}
-
-if(transitionMatrix[last]){
-Object.keys(transitionMatrix[last]).forEach(next=>{
-scores[next]+=transitionMatrix[last][next]*0.4
-})
-}
+if(hotItem)scores[hotItem]+=5
 
 let last10=history.slice(-10)
 
-let vegCount=last10.filter(x=>veg.includes(x)).length
-let meatCount=last10.filter(x=>meat.includes(x)).length
-
-if(vegCount>=7)meat.forEach(m=>scores[m]+=2)
-if(meatCount>=7)veg.forEach(v=>scores[v]+=2)
+foods.forEach(f=>{
+let c=last10.filter(x=>x==f).length
+if(c>=3)scores[f]+=1
+if(c>=4)scores[f]+=2
+})
 
 foods.forEach(f=>scores[f]+=Math.random())
 
@@ -194,21 +174,16 @@ function monteCarlo(){
 let sim={}
 foods.forEach(f=>sim[f]=0)
 
-for(let i=0;i<4000;i++){
+for(let i=0;i<2000;i++){
 
 let scores=aiScores()
-
 let sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1])
-
-let pool=sorted.slice(0,5)
-
-let pick=pool[Math.floor(Math.random()*pool.length)][0]
-
+let pick=sorted[Math.floor(Math.random()*4)][0]
 sim[pick]++
+
 }
 
-foods.forEach(f=>sim[f]=(sim[f]/4000*100).toFixed(1))
-
+foods.forEach(f=>sim[f]=(sim[f]/2000*100).toFixed(1))
 return sim
 }
 
@@ -239,22 +214,27 @@ ctx.strokeStyle="#22c55e"
 ctx.stroke()
 
 ctx.fillText(emoji[k],x,y)
+
 })
 }
 
 function update(){
 
-patternReplayDetector()
+let last20=history.slice(-20)
 
 document.getElementById("history").innerHTML=
-history.slice(-20).map(x=>emoji[x]).join(" ")
+last20.map(x=>emoji[x]).join(" ")
+
+document.getElementById("heatmap").innerHTML=
+history.slice(-40).map(x=>emoji[x]).join(" ")
+
+document.getElementById("absence").innerHTML=
+foods.map(f=>emoji[f]+" "+absence(f)).join(" | ")
 
 document.getElementById("repeat").innerHTML=repeat()
 
 document.getElementById("wave").innerHTML=
 waveDetector()+" | "+trapDetector()
-
-document.getElementById("replay").innerHTML=patternReplay
 
 let s=aiScores()
 
@@ -301,13 +281,10 @@ let monte=monteCarlo()
 document.getElementById("monte").innerHTML=
 foods.map(f=>emoji[f]+" "+monte[f]+"%").join(" | ")
 
-let best=sorted[0][1]
-let second=sorted[1][1]
-
-let confidence=((best-second)/best)*100
+let confidence=Math.max(...Object.values(s))
 
 document.getElementById("confidence").innerHTML=
-confidence.toFixed(1)+"%"
+confidence.toFixed(1)
 
 let acc=predictions?((correct/predictions)*100).toFixed(1):0
 
