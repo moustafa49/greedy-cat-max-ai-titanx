@@ -1,14 +1,16 @@
 <!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
-<title>Greedy Cat MAX — OMEGA GOD AI</title><style>
+<title>Greedy Cat MAX — OMEGA AI ULTRA</title><style>
 body{font-family:Arial;background:#020617;color:white;text-align:center;padding:20px}
 h1{color:#22c55e}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px}
 button{padding:12px;font-size:22px;background:#1e293b;color:white;border:none;border-radius:8px;cursor:pointer}
+.hot{background:#ef4444}
 .section{margin-top:16px}
 canvas{background:black;border-radius:10px}
-</style></head><body><h1>Greedy Cat MAX — OMEGA GOD AI</h1><div class="grid">
+</style></head>
+<body><h1>Greedy Cat MAX — OMEGA AI ULTRA</h1><div class="grid">
 <button onclick="add('corn')">🌽</button>
 <button onclick="add('tomato')">🍅</button>
 <button onclick="add('carrot')">🥕</button>
@@ -23,11 +25,10 @@ canvas{background:black;border-radius:10px}
 <div class="section"><b>Last 20</b><div id="history"></div></div>
 <div class="section"><b>Repeat</b><div id="repeat"></div></div>
 <div class="section"><b>Wave / Trap</b><div id="wave"></div></div>
-<div class="section"><b>Hidden Bias</b><div id="bias"></div></div>
-<div class="section"><b>Pattern Replay</b><div id="replay"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
+<div class="section"><b>Bias</b><div id="bias"></div></div>
+<div class="section"><b>Replay</b><div id="replay"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
 <div class="section"><b>Top5</b><div id="top5"></div></div>
-<div class="section"><b>Top6</b><div id="top6"></div></div><div class="section">
-<b>Strategy</b>
+<div class="section"><b>Top6</b><div id="top6"></div></div><div class="section"><b>Strategy</b>
 <div id="safe"></div>
 <div id="balanced"></div>
 <div id="aggressive"></div>
@@ -51,57 +52,48 @@ fish:"🐟",shrimp:"🦐",cow:"🐄",chicken:"🐔"
 let history=[]
 let learningMemory={}
 let transitionMatrix={}
-let neuralWeights={}
-let momentum={}
-let predictions=0
-let correct=0
 let patternReplay="None"
 
-foods.forEach(f=>{
-learningMemory[f]=0
-neuralWeights[f]=1
-momentum[f]=0
-})
+let weights={}
+foods.forEach(f=>weights[f]=1)
+
+let predictions=0
+let correct=0
 
 function add(food){
 
 if(window.lastPrediction){
-
 predictions++
 
 if(window.lastPrediction.includes(food)){
 correct++
-neuralWeights[food]+=0.2
+weights[food]+=0.3
 }else{
-window.lastPrediction.forEach(p=>neuralWeights[p]-=0.03)
+window.lastPrediction.forEach(p=>weights[p]-=0.05)
 }
-
 }
 
 if(history.length>0){
-
 let prev=history[history.length-1]
 
-if(!transitionMatrix[prev])transitionMatrix[prev]={}
-if(!transitionMatrix[prev][food])transitionMatrix[prev][food]=0
+if(!transitionMatrix[prev]) transitionMatrix[prev]={}
+if(!transitionMatrix[prev][food]) transitionMatrix[prev][food]=0
 
 transitionMatrix[prev][food]++
-
 }
 
 history.push(food)
 
+if(!learningMemory[food])learningMemory[food]=0
 learningMemory[food]++
 
 update()
-
 }
 
 function undo(){history.pop();update()}
-function reset(){history=[];update()}
+function reset(){history=[];learningMemory={};transitionMatrix={};update()}
 
 function repeat(){
-
 let last=history[history.length-1]
 let c=0
 
@@ -111,35 +103,32 @@ else break
 }
 
 return last?emoji[last]+" x"+c:""
-
 }
 
 function waveDetector(){
 
-let last10=history.slice(-10)
+let last=history.slice(-10)
 
-let v=last10.filter(x=>veg.includes(x)).length
-let m=last10.filter(x=>meat.includes(x)).length
+let v=last.filter(x=>veg.includes(x)).length
+let m=last.filter(x=>meat.includes(x)).length
 
 if(v>m)return "Vegetable Wave"
 if(m>v)return "Meat Wave"
 
 return "Mixed"
-
 }
 
 function trapDetector(){
 
-let last6=history.slice(-6)
+let last=history.slice(-6)
 
-let v=last6.filter(x=>veg.includes(x)).length
-let m=last6.filter(x=>meat.includes(x)).length
+let v=last.filter(x=>veg.includes(x)).length
+let m=last.filter(x=>meat.includes(x)).length
 
 if(v>=5)return "Vegetable Trap"
 if(m>=5)return "Meat Trap"
 
 return "Normal"
-
 }
 
 function patternReplayDetector(){
@@ -152,62 +141,52 @@ return
 let a=history.slice(-6).join("-")
 let b=history.slice(-12,-6).join("-")
 
-patternReplay=a===b?"Replay Pattern":"None"
-
-}
-
-function hiddenBias(){
-
-let last12=history.slice(-12)
-
-let result=null
-
-foods.forEach(f=>{
-if(last12.filter(x=>x==f).length>=5)result=f
-})
-
-return result
-
-}
-
-function momentumEngine(){
-
-let last5=history.slice(-5)
-
-foods.forEach(f=>{
-momentum[f]=last5.filter(x=>x==f).length
-})
-
+patternReplay = a===b?"Replay Pattern":"None"
 }
 
 function aiScores(){
 
-momentumEngine()
-
 let scores={}
 foods.forEach(f=>scores[f]=0)
 
-history.forEach(f=>scores[f]+=neuralWeights[f])
+history.forEach(f=>scores[f]+=weights[f])
 
 foods.forEach(f=>{
-scores[f]+=learningMemory[f]*0.03
-scores[f]+=momentum[f]
+if(learningMemory[f])scores[f]+=learningMemory[f]*0.05
 })
 
 let last=history[history.length-1]
 
-if(transitionMatrix[last]){
+if(last){
+scores[last]+=3
 
-Object.keys(transitionMatrix[last]).forEach(n=>{
-scores[n]+=transitionMatrix[last][n]*0.4
-})
-
+let streak=0
+for(let i=history.length-1;i>=0;i--){
+if(history[i]==last)streak++
+else break
 }
+
+if(streak>=2)scores[last]+=2
+if(streak>=3)scores[last]+=4
+}
+
+if(transitionMatrix[last]){
+Object.keys(transitionMatrix[last]).forEach(next=>{
+scores[next]+=transitionMatrix[last][next]*0.4
+})
+}
+
+let last10=history.slice(-10)
+
+let vegCount=last10.filter(x=>veg.includes(x)).length
+let meatCount=last10.filter(x=>meat.includes(x)).length
+
+if(vegCount>=7)meat.forEach(m=>scores[m]+=2)
+if(meatCount>=7)veg.forEach(v=>scores[v]+=2)
 
 foods.forEach(f=>scores[f]+=Math.random())
 
 return scores
-
 }
 
 function monteCarlo(){
@@ -215,22 +194,22 @@ function monteCarlo(){
 let sim={}
 foods.forEach(f=>sim[f]=0)
 
-for(let i=0;i<10000;i++){
+for(let i=0;i<4000;i++){
 
 let scores=aiScores()
 
 let sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1])
 
-let pick=sorted[Math.floor(Math.random()*5)][0]
+let pool=sorted.slice(0,5)
+
+let pick=pool[Math.floor(Math.random()*pool.length)][0]
 
 sim[pick]++
-
 }
 
-foods.forEach(f=>sim[f]=(sim[f]/10000*100).toFixed(1))
+foods.forEach(f=>sim[f]=(sim[f]/4000*100).toFixed(1))
 
 return sim
-
 }
 
 function drawRadar(scores){
@@ -260,9 +239,7 @@ ctx.strokeStyle="#22c55e"
 ctx.stroke()
 
 ctx.fillText(emoji[k],x,y)
-
 })
-
 }
 
 function update(){
@@ -278,11 +255,6 @@ document.getElementById("wave").innerHTML=
 waveDetector()+" | "+trapDetector()
 
 document.getElementById("replay").innerHTML=patternReplay
-
-let bias=hiddenBias()
-
-document.getElementById("bias").innerHTML=
-bias?emoji[bias]:"None"
 
 let s=aiScores()
 
@@ -301,9 +273,14 @@ let top6=[vegTop[0],vegTop[1],vegTop[2],meat3[0],meat3[1],meat3[2]]
 
 window.lastPrediction=top5
 
-document.getElementById("prediction").innerHTML=top5.map(x=>emoji[x]).join(" ")
-document.getElementById("top5").innerHTML=top5.map(x=>emoji[x]).join(" ")
-document.getElementById("top6").innerHTML=top6.map(x=>emoji[x]).join(" ")
+document.getElementById("prediction").innerHTML=
+top5.map(x=>emoji[x]).join(" ")
+
+document.getElementById("top5").innerHTML=
+top5.map(x=>emoji[x]).join(" ")
+
+document.getElementById("top6").innerHTML=
+top6.map(x=>emoji[x]).join(" ")
 
 document.getElementById("safe").innerHTML=
 "SAFE: "+sorted.slice(0,5).map(x=>emoji[x[0]]).join(" ")
@@ -334,7 +311,8 @@ confidence.toFixed(1)+"%"
 
 let acc=predictions?((correct/predictions)*100).toFixed(1):0
 
-document.getElementById("accuracy").innerHTML=acc+"%"
+document.getElementById("accuracy").innerHTML=
+acc+"%"
 
 }
 
