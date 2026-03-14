@@ -1,14 +1,15 @@
 <!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
-<title>Greedy Cat MAX — OMEGA GOD AI</title><style>
+<title>Greedy Cat MAX — TITAN QUANTUM AI</title><style>
 body{font-family:Arial;background:#020617;color:white;text-align:center;padding:20px}
 h1{color:#22c55e}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:15px}
 button{padding:12px;font-size:22px;background:#1e293b;color:white;border:none;border-radius:8px;cursor:pointer}
 .section{margin-top:16px}
 canvas{background:black;border-radius:10px}
-</style></head><body><h1>Greedy Cat MAX — OMEGA GOD AI</h1><div class="grid">
+</style></head>
+<body><h1>Greedy Cat MAX — TITAN QUANTUM AI</h1><div class="grid">
 <button onclick="add('corn')">🌽</button>
 <button onclick="add('tomato')">🍅</button>
 <button onclick="add('carrot')">🥕</button>
@@ -24,7 +25,9 @@ canvas{background:black;border-radius:10px}
 <div class="section"><b>Repeat</b><div id="repeat"></div></div>
 <div class="section"><b>Wave / Trap</b><div id="wave"></div></div>
 <div class="section"><b>Hidden Bias</b><div id="bias"></div></div>
-<div class="section"><b>Pattern Replay</b><div id="replay"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
+<div class="section"><b>Pattern Replay</b><div id="replay"></div></div>
+<div class="section"><b>Cycle</b><div id="cycle"></div></div>
+<div class="section"><b>Probability Drift</b><div id="drift"></div></div><div class="section"><b>Prediction</b><div id="prediction"></div></div>
 <div class="section"><b>Top5</b><div id="top5"></div></div>
 <div class="section"><b>Top6</b><div id="top6"></div></div><div class="section">
 <b>Strategy</b>
@@ -53,6 +56,7 @@ let learningMemory={}
 let transitionMatrix={}
 let neuralWeights={}
 let momentum={}
+
 let predictions=0
 let correct=0
 let patternReplay="None"
@@ -156,6 +160,24 @@ patternReplay=a===b?"Replay Pattern":"None"
 
 }
 
+function patternCycleDetector(){
+
+if(history.length<8) return "None"
+
+let a=history.slice(-4).join("-")
+
+for(let i=0;i<history.length-8;i++){
+
+let b=history.slice(i,i+4).join("-")
+
+if(a===b) return "Cycle Detected"
+
+}
+
+return "None"
+
+}
+
 function hiddenBias(){
 
 let last12=history.slice(-12)
@@ -167,6 +189,20 @@ if(last12.filter(x=>x==f).length>=5)result=f
 })
 
 return result
+
+}
+
+function probabilityDrift(scores){
+
+let arr=Object.values(scores)
+
+let max=Math.max(...arr)
+let min=Math.min(...arr)
+
+if(max-min>5) return "High Drift"
+if(max-min>2) return "Medium Drift"
+
+return "Stable"
 
 }
 
@@ -215,19 +251,31 @@ function monteCarlo(){
 let sim={}
 foods.forEach(f=>sim[f]=0)
 
-for(let i=0;i<10000;i++){
+for(let i=0;i<15000;i++){
 
 let scores=aiScores()
 
-let sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1])
+let total=Object.values(scores).reduce((a,b)=>a+b,0)
 
-let pick=sorted[Math.floor(Math.random()*5)][0]
+let r=Math.random()*total
+let cumulative=0
 
-sim[pick]++
+for(let f of foods){
+
+cumulative+=scores[f]
+
+if(r<=cumulative){
+sim[f]++
+break
+}
 
 }
 
-foods.forEach(f=>sim[f]=(sim[f]/10000*100).toFixed(1))
+}
+
+foods.forEach(f=>{
+sim[f]=(sim[f]/15000*100).toFixed(1)
+})
 
 return sim
 
@@ -279,12 +327,16 @@ waveDetector()+" | "+trapDetector()
 
 document.getElementById("replay").innerHTML=patternReplay
 
+document.getElementById("cycle").innerHTML=patternCycleDetector()
+
 let bias=hiddenBias()
 
 document.getElementById("bias").innerHTML=
 bias?emoji[bias]:"None"
 
 let s=aiScores()
+
+document.getElementById("drift").innerHTML=probabilityDrift(s)
 
 drawRadar(s)
 
